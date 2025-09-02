@@ -1,0 +1,829 @@
+Starting fold 7/11.
+Preparing fold dataloaders...
+Fold 7 - Train samples: 364.
+Fold 7 - Validation samples: 36.
+Training model without FSL.
+Epoch: 0
+---------
+Train loss: 0.70605 | Train accuracy: 53.12%
+Test loss: 0.68361 | Test accuracy: 65.62%
+
+Epoch: 1
+---------
+Train loss: 0.62922 | Train accuracy: 67.36%
+Test loss: 0.69391 | Test accuracy: 62.50%
+
+Epoch: 2
+---------
+Train loss: 0.57423 | Train accuracy: 71.18%
+Test loss: 0.88419 | Test accuracy: 43.75%
+
+Epoch: 3
+---------
+Train loss: 0.52127 | Train accuracy: 78.56%
+Test loss: 0.83608 | Test accuracy: 67.19%
+
+Epoch: 4
+---------
+Train loss: 0.43013 | Train accuracy: 82.38%
+Test loss: 0.44148 | Test accuracy: 82.81%
+
+Epoch: 5
+---------
+Train loss: 0.33619 | Train accuracy: 88.45%
+Test loss: 0.44684 | Test accuracy: 76.56%
+
+Epoch: 6
+---------
+Train loss: 0.24806 | Train accuracy: 91.41%
+Test loss: 0.30855 | Test accuracy: 78.12%
+
+Epoch: 7
+---------
+Train loss: 0.17994 | Train accuracy: 92.62%
+Test loss: 0.14848 | Test accuracy: 95.31%
+
+Epoch: 8
+---------
+Train loss: 0.12640 | Train accuracy: 96.61%
+Test loss: 0.10289 | Test accuracy: 96.88%
+
+Epoch: 9
+---------
+Train loss: 0.10511 | Train accuracy: 97.14%
+Test loss: 0.05732 | Test accuracy: 100.00%
+
+Epoch: 10
+---------
+Train loss: 0.07374 | Train accuracy: 98.44%
+Test loss: 0.03854 | Test accuracy: 100.00%
+
+Epoch: 11
+---------
+Train loss: 0.09963 | Train accuracy: 96.44%
+Test loss: 0.02854 | Test accuracy: 100.00%
+
+Epoch: 12
+---------
+Train loss: 0.07364 | Train accuracy: 96.88%
+Test loss: 0.06455 | Test accuracy: 98.44%
+
+Epoch: 13
+---------
+Train loss: 0.04570 | Train accuracy: 98.70%
+Test loss: 0.03199 | Test accuracy: 98.44%
+
+Epoch: 14
+---------
+Train loss: 0.06375 | Train accuracy: 98.26%
+Test loss: 0.01537 | Test accuracy: 100.00%
+
+Epoch: 15
+---------
+Train loss: 0.03825 | Train accuracy: 99.22%
+Test loss: 0.00796 | Test accuracy: 100.00%
+
+Epoch: 16
+---------
+Train loss: 0.05295 | Train accuracy: 98.70%
+Test loss: 0.00889 | Test accuracy: 100.00%
+
+Epoch: 17
+---------
+Train loss: 0.03036 | Train accuracy: 99.48%
+Test loss: 0.00561 | Test accuracy: 100.00%
+
+Epoch: 18
+---------
+Train loss: 0.04209 | Train accuracy: 98.96%
+Test loss: 0.02602 | Test accuracy: 100.00%
+
+Epoch: 19
+---------
+Train loss: 0.04091 | Train accuracy: 98.26%
+Test loss: 0.01001 | Test accuracy: 100.00%
+
+Epoch: 20
+---------
+Train loss: 0.12298 | Train accuracy: 96.53%
+Test loss: 0.00472 | Test accuracy: 100.00%
+
+Epoch: 21
+---------
+Train loss: 0.06177 | Train accuracy: 97.14%
+Test loss: 0.01478 | Test accuracy: 100.00%
+
+Epoch: 22
+---------
+Train loss: 0.05508 | Train accuracy: 98.00%
+Test loss: 0.02308 | Test accuracy: 100.00%
+
+Epoch: 23
+---------
+Train loss: 0.03891 | Train accuracy: 99.22%
+Test loss: 0.07763 | Test accuracy: 98.44%
+
+Epoch: 24
+---------
+Train loss: 0.04315 | Train accuracy: 98.44%
+Test loss: 0.07048 | Test accuracy: 100.00%
+
+Epoch: 25
+---------
+Train loss: 0.08622 | Train accuracy: 96.53%
+Test loss: 0.00577 | Test accuracy: 100.00%
+
+Epoch: 26
+---------
+Train loss: 0.06573 | Train accuracy: 98.18%
+Test loss: 0.15646 | Test accuracy: 96.88%
+
+Epoch: 27
+---------
+Train loss: 0.08502 | Train accuracy: 95.92%
+Test loss: 0.10776 | Test accuracy: 96.88%
+
+Epoch: 28
+---------
+Train loss: 0.08081 | Train accuracy: 97.40%
+Test loss: 0.02148 | Test accuracy: 98.44%
+
+Epoch: 29
+---------
+Train loss: 0.06115 | Train accuracy: 97.40%
+Test loss: 0.01609 | Test accuracy: 98.44%
+
+Epoch: 30
+---------
+Train loss: 0.15624 | Train accuracy: 96.35%
+Test loss: 0.01434 | Test accuracy: 100.00%
+
+Epoch: 31
+---------
+Train loss: 0.07887 | Train accuracy: 96.88%
+Test loss: 0.32146 | Test accuracy: 84.38%
+
+Epoch: 32
+---------
+Train loss: 0.08698 | Train accuracy: 96.88%
+Test loss: 0.00821 | Test accuracy: 100.00%
+
+Epoch: 33
+---------
+Train loss: 0.05174 | Train accuracy: 98.44%
+Test loss: 0.00534 | Test accuracy: 100.00%
+
+Epoch: 34
+---------
+Train loss: 0.05687 | Train accuracy: 98.26%
+Test loss: 0.00339 | Test accuracy: 100.00%
+
+Epoch: 35
+---------
+Train loss: 0.11668 | Train accuracy: 96.53%
+Test loss: 0.00188 | Test accuracy: 100.00%
+
+Epoch: 36
+---------
+Train loss: 0.05880 | Train accuracy: 97.74%
+Test loss: 0.00386 | Test accuracy: 100.00%
+
+Epoch: 37
+---------
+Train loss: 0.06483 | Train accuracy: 98.00%
+Test loss: 0.00445 | Test accuracy: 100.00%
+
+Epoch: 38
+---------
+Train loss: 0.03112 | Train accuracy: 99.22%
+Test loss: 0.00563 | Test accuracy: 100.00%
+
+Epoch: 39
+---------
+Train loss: 0.04215 | Train accuracy: 97.57%
+Test loss: 0.00344 | Test accuracy: 100.00%
+
+Epoch: 40
+---------
+Train loss: 0.07556 | Train accuracy: 98.96%
+Test loss: 0.00331 | Test accuracy: 100.00%
+
+Epoch: 41
+---------
+Train loss: 0.04620 | Train accuracy: 98.26%
+Test loss: 0.00233 | Test accuracy: 100.00%
+
+Epoch: 42
+---------
+Train loss: 0.01919 | Train accuracy: 99.48%
+Test loss: 0.00297 | Test accuracy: 100.00%
+
+Epoch: 43
+---------
+Train loss: 0.04226 | Train accuracy: 98.70%
+Test loss: 0.00157 | Test accuracy: 100.00%
+
+Epoch: 44
+---------
+Train loss: 0.03827 | Train accuracy: 98.78%
+Test loss: 0.00156 | Test accuracy: 100.00%
+
+Epoch: 45
+---------
+Train loss: 0.02958 | Train accuracy: 98.70%
+Test loss: 0.00369 | Test accuracy: 100.00%
+
+Epoch: 46
+---------
+Train loss: 0.01942 | Train accuracy: 99.22%
+Test loss: 0.00179 | Test accuracy: 100.00%
+
+Epoch: 47
+---------
+Train loss: 0.04925 | Train accuracy: 98.61%
+Test loss: 0.00204 | Test accuracy: 100.00%
+
+Epoch: 48
+---------
+Train loss: 0.02671 | Train accuracy: 99.22%
+Test loss: 0.00074 | Test accuracy: 100.00%
+
+Epoch: 49
+---------
+Train loss: 0.06103 | Train accuracy: 97.83%
+Test loss: 0.00053 | Test accuracy: 100.00%
+
+Training model with FSL.
+Epoch: 0
+---------
+Train loss: 0.75947 | Train accuracy: 48.52%
+Test loss: 0.68423 | Test accuracy: 50.00%
+
+Epoch: 1
+---------
+Train loss: 0.69393 | Train accuracy: 63.89%
+Test loss: 0.74136 | Test accuracy: 39.06%
+
+Epoch: 2
+---------
+Train loss: 0.62924 | Train accuracy: 70.23%
+Test loss: 0.75478 | Test accuracy: 39.06%
+
+Epoch: 3
+---------
+Train loss: 0.53236 | Train accuracy: 77.60%
+Test loss: 0.63959 | Test accuracy: 62.50%
+
+Epoch: 4
+---------
+Train loss: 0.38188 | Train accuracy: 86.55%
+Test loss: 0.60773 | Test accuracy: 79.69%
+
+Epoch: 5
+---------
+Train loss: 0.24661 | Train accuracy: 95.14%
+Test loss: 0.32551 | Test accuracy: 84.38%
+
+Epoch: 6
+---------
+Train loss: 0.13940 | Train accuracy: 97.92%
+Test loss: 0.04247 | Test accuracy: 100.00%
+
+Epoch: 7
+---------
+Train loss: 0.09485 | Train accuracy: 99.48%
+Test loss: 0.02108 | Test accuracy: 100.00%
+
+Epoch: 8
+---------
+Train loss: 0.10074 | Train accuracy: 98.26%
+Test loss: 0.00668 | Test accuracy: 100.00%
+
+Epoch: 9
+---------
+Train loss: 0.08146 | Train accuracy: 98.96%
+Test loss: 0.00392 | Test accuracy: 100.00%
+
+Epoch: 10
+---------
+Train loss: 0.06075 | Train accuracy: 99.22%
+Test loss: 0.00306 | Test accuracy: 100.00%
+
+Epoch: 11
+---------
+Train loss: 0.05418 | Train accuracy: 99.48%
+Test loss: 0.00124 | Test accuracy: 100.00%
+
+Epoch: 12
+---------
+Train loss: 0.04980 | Train accuracy: 99.74%
+Test loss: 0.00148 | Test accuracy: 100.00%
+
+Epoch: 13
+---------
+Train loss: 0.04169 | Train accuracy: 99.74%
+Test loss: 0.00112 | Test accuracy: 100.00%
+
+Epoch: 14
+---------
+Train loss: 0.04442 | Train accuracy: 99.22%
+Test loss: 0.00129 | Test accuracy: 100.00%
+
+Epoch: 15
+---------
+Train loss: 0.03393 | Train accuracy: 100.00%
+Test loss: 0.00082 | Test accuracy: 100.00%
+
+Epoch: 16
+---------
+Train loss: 0.03310 | Train accuracy: 99.74%
+Test loss: 0.00108 | Test accuracy: 100.00%
+
+Epoch: 17
+---------
+Train loss: 0.03512 | Train accuracy: 99.74%
+Test loss: 0.00063 | Test accuracy: 100.00%
+
+Epoch: 18
+---------
+Train loss: 0.02950 | Train accuracy: 100.00%
+Test loss: 0.00040 | Test accuracy: 100.00%
+
+Epoch: 19
+---------
+Train loss: 0.02429 | Train accuracy: 100.00%
+Test loss: 0.00028 | Test accuracy: 100.00%
+
+Epoch: 20
+---------
+Train loss: 0.02268 | Train accuracy: 100.00%
+Test loss: 0.00025 | Test accuracy: 100.00%
+
+Epoch: 21
+---------
+Train loss: 0.02202 | Train accuracy: 100.00%
+Test loss: 0.00021 | Test accuracy: 100.00%
+
+Epoch: 22
+---------
+Train loss: 0.02336 | Train accuracy: 100.00%
+Test loss: 0.00014 | Test accuracy: 100.00%
+
+Epoch: 23
+---------
+Train loss: 0.06905 | Train accuracy: 98.61%
+Test loss: 0.00011 | Test accuracy: 100.00%
+
+Epoch: 24
+---------
+Train loss: 0.04155 | Train accuracy: 99.22%
+Test loss: 0.00174 | Test accuracy: 100.00%
+
+Epoch: 25
+---------
+Train loss: 0.02329 | Train accuracy: 99.74%
+Test loss: 0.00018 | Test accuracy: 100.00%
+
+Epoch: 26
+---------
+Train loss: 0.02918 | Train accuracy: 99.48%
+Test loss: 0.00017 | Test accuracy: 100.00%
+
+Epoch: 27
+---------
+Train loss: 0.01712 | Train accuracy: 100.00%
+Test loss: 0.00048 | Test accuracy: 100.00%
+
+Epoch: 28
+---------
+Train loss: 0.01579 | Train accuracy: 100.00%
+Test loss: 0.00028 | Test accuracy: 100.00%
+
+Epoch: 29
+---------
+Train loss: 0.03111 | Train accuracy: 98.61%
+Test loss: 0.00014 | Test accuracy: 100.00%
+
+Epoch: 30
+---------
+Train loss: 0.01672 | Train accuracy: 100.00%
+Test loss: 0.00014 | Test accuracy: 100.00%
+
+Epoch: 31
+---------
+Train loss: 0.01466 | Train accuracy: 100.00%
+Test loss: 0.00021 | Test accuracy: 100.00%
+
+Epoch: 32
+---------
+Train loss: 0.01365 | Train accuracy: 100.00%
+Test loss: 0.00007 | Test accuracy: 100.00%
+
+Epoch: 33
+---------
+Train loss: 0.01340 | Train accuracy: 100.00%
+Test loss: 0.00008 | Test accuracy: 100.00%
+
+Epoch: 34
+---------
+Train loss: 0.01060 | Train accuracy: 100.00%
+Test loss: 0.00010 | Test accuracy: 100.00%
+
+Epoch: 35
+---------
+Train loss: 0.01723 | Train accuracy: 100.00%
+Test loss: 0.00004 | Test accuracy: 100.00%
+
+Epoch: 36
+---------
+Train loss: 0.00956 | Train accuracy: 100.00%
+Test loss: 0.00010 | Test accuracy: 100.00%
+
+Epoch: 37
+---------
+Train loss: 0.00929 | Train accuracy: 100.00%
+Test loss: 0.00006 | Test accuracy: 100.00%
+
+Epoch: 38
+---------
+Train loss: 0.00977 | Train accuracy: 100.00%
+Test loss: 0.00006 | Test accuracy: 100.00%
+
+Epoch: 39
+---------
+Train loss: 0.04477 | Train accuracy: 97.92%
+Test loss: 0.00004 | Test accuracy: 100.00%
+
+Epoch: 40
+---------
+Train loss: 0.01209 | Train accuracy: 100.00%
+Test loss: 0.00018 | Test accuracy: 100.00%
+
+Epoch: 41
+---------
+Train loss: 0.03314 | Train accuracy: 99.05%
+Test loss: 0.00010 | Test accuracy: 100.00%
+
+Epoch: 42
+---------
+Train loss: 0.01362 | Train accuracy: 99.74%
+Test loss: 0.00007 | Test accuracy: 100.00%
+
+Epoch: 43
+---------
+Train loss: 0.01157 | Train accuracy: 100.00%
+Test loss: 0.00003 | Test accuracy: 100.00%
+
+Epoch: 44
+---------
+Train loss: 0.01700 | Train accuracy: 99.74%
+Test loss: 0.00002 | Test accuracy: 100.00%
+
+Epoch: 45
+---------
+Train loss: 0.00823 | Train accuracy: 100.00%
+Test loss: 0.00002 | Test accuracy: 100.00%
+
+Epoch: 46
+---------
+Train loss: 0.00906 | Train accuracy: 100.00%
+Test loss: 0.00002 | Test accuracy: 100.00%
+
+Epoch: 47
+---------
+Train loss: 0.00727 | Train accuracy: 100.00%
+Test loss: 0.00002 | Test accuracy: 100.00%
+
+Epoch: 48
+---------
+Train loss: 0.00739 | Train accuracy: 100.00%
+Test loss: 0.00004 | Test accuracy: 100.00%
+
+Epoch: 49
+---------
+Train loss: 0.01183 | Train accuracy: 99.74%
+Test loss: 0.00003 | Test accuracy: 100.00%
+
+Training model with Post-hoc FSL.
+Epoch: 0
+---------
+Train loss: 0.08623 | Train accuracy: 99.05%
+Test loss: 0.00078 | Test accuracy: 100.00%
+
+Epoch: 1
+---------
+Train loss: 0.06121 | Train accuracy: 100.00%
+Test loss: 0.00108 | Test accuracy: 100.00%
+
+Epoch: 2
+---------
+Train loss: 0.05821 | Train accuracy: 100.00%
+Test loss: 0.00044 | Test accuracy: 100.00%
+
+Epoch: 3
+---------
+Train loss: 0.05448 | Train accuracy: 100.00%
+Test loss: 0.00046 | Test accuracy: 100.00%
+
+Epoch: 4
+---------
+Train loss: 0.05518 | Train accuracy: 99.74%
+Test loss: 0.00063 | Test accuracy: 100.00%
+
+Epoch: 5
+---------
+Train loss: 0.05891 | Train accuracy: 99.48%
+Test loss: 0.00042 | Test accuracy: 100.00%
+
+Epoch: 6
+---------
+Train loss: 0.11562 | Train accuracy: 98.09%
+Test loss: 0.00039 | Test accuracy: 100.00%
+
+Epoch: 7
+---------
+Train loss: 0.05511 | Train accuracy: 99.05%
+Test loss: 0.00018 | Test accuracy: 100.00%
+
+Epoch: 8
+---------
+Train loss: 0.05613 | Train accuracy: 99.31%
+Test loss: 0.00033 | Test accuracy: 100.00%
+
+Epoch: 9
+---------
+Train loss: 0.04934 | Train accuracy: 99.48%
+Test loss: 0.00032 | Test accuracy: 100.00%
+
+Epoch: 10
+---------
+Train loss: 0.04410 | Train accuracy: 99.74%
+Test loss: 0.00048 | Test accuracy: 100.00%
+
+Epoch: 11
+---------
+Train loss: 0.04419 | Train accuracy: 99.74%
+Test loss: 0.00044 | Test accuracy: 100.00%
+
+Epoch: 12
+---------
+Train loss: 0.04245 | Train accuracy: 99.74%
+Test loss: 0.00027 | Test accuracy: 100.00%
+
+Epoch: 13
+---------
+Train loss: 0.04602 | Train accuracy: 99.48%
+Test loss: 0.00033 | Test accuracy: 100.00%
+
+Epoch: 14
+---------
+Train loss: 0.07235 | Train accuracy: 98.35%
+Test loss: 0.00029 | Test accuracy: 100.00%
+
+Epoch: 15
+---------
+Train loss: 0.03554 | Train accuracy: 100.00%
+Test loss: 0.00034 | Test accuracy: 100.00%
+
+Epoch: 16
+---------
+Train loss: 0.03969 | Train accuracy: 100.00%
+Test loss: 0.00033 | Test accuracy: 100.00%
+
+Epoch: 17
+---------
+Train loss: 0.03532 | Train accuracy: 100.00%
+Test loss: 0.00033 | Test accuracy: 100.00%
+
+Epoch: 18
+---------
+Train loss: 0.03812 | Train accuracy: 100.00%
+Test loss: 0.00021 | Test accuracy: 100.00%
+
+Epoch: 19
+---------
+Train loss: 0.05133 | Train accuracy: 99.22%
+Test loss: 0.00020 | Test accuracy: 100.00%
+
+Epoch: 20
+---------
+Train loss: 0.03548 | Train accuracy: 99.74%
+Test loss: 0.00028 | Test accuracy: 100.00%
+
+Epoch: 21
+---------
+Train loss: 0.03542 | Train accuracy: 99.74%
+Test loss: 0.00026 | Test accuracy: 100.00%
+
+Epoch: 22
+---------
+Train loss: 0.03221 | Train accuracy: 99.74%
+Test loss: 0.00026 | Test accuracy: 100.00%
+
+Epoch: 23
+---------
+Train loss: 0.05002 | Train accuracy: 99.31%
+Test loss: 0.00022 | Test accuracy: 100.00%
+
+Epoch: 24
+---------
+Train loss: 0.02908 | Train accuracy: 100.00%
+Test loss: 0.00015 | Test accuracy: 100.00%
+
+Epoch: 25
+---------
+Train loss: 0.03189 | Train accuracy: 99.74%
+Test loss: 0.00026 | Test accuracy: 100.00%
+
+Epoch: 26
+---------
+Train loss: 0.04843 | Train accuracy: 98.96%
+Test loss: 0.00018 | Test accuracy: 100.00%
+
+Epoch: 27
+---------
+Train loss: 0.02784 | Train accuracy: 100.00%
+Test loss: 0.00026 | Test accuracy: 100.00%
+
+Epoch: 28
+---------
+Train loss: 0.02813 | Train accuracy: 100.00%
+Test loss: 0.00025 | Test accuracy: 100.00%
+
+Epoch: 29
+---------
+Train loss: 0.02697 | Train accuracy: 100.00%
+Test loss: 0.00028 | Test accuracy: 100.00%
+
+Epoch: 30
+---------
+Train loss: 0.02529 | Train accuracy: 100.00%
+Test loss: 0.00024 | Test accuracy: 100.00%
+
+Epoch: 31
+---------
+Train loss: 0.03673 | Train accuracy: 99.22%
+Test loss: 0.00017 | Test accuracy: 100.00%
+
+Epoch: 32
+---------
+Train loss: 0.07643 | Train accuracy: 98.52%
+Test loss: 0.00021 | Test accuracy: 100.00%
+
+Epoch: 33
+---------
+Train loss: 0.02522 | Train accuracy: 100.00%
+Test loss: 0.00010 | Test accuracy: 100.00%
+
+Epoch: 34
+---------
+Train loss: 0.09054 | Train accuracy: 98.78%
+Test loss: 0.00012 | Test accuracy: 100.00%
+
+Epoch: 35
+---------
+Train loss: 0.03015 | Train accuracy: 99.74%
+Test loss: 0.00016 | Test accuracy: 100.00%
+
+Epoch: 36
+---------
+Train loss: 0.02431 | Train accuracy: 100.00%
+Test loss: 0.00014 | Test accuracy: 100.00%
+
+Epoch: 37
+---------
+Train loss: 0.02801 | Train accuracy: 99.74%
+Test loss: 0.00023 | Test accuracy: 100.00%
+
+Epoch: 38
+---------
+Train loss: 0.02498 | Train accuracy: 100.00%
+Test loss: 0.00025 | Test accuracy: 100.00%
+
+Epoch: 39
+---------
+Train loss: 0.03139 | Train accuracy: 99.31%
+Test loss: 0.00025 | Test accuracy: 100.00%
+
+Epoch: 40
+---------
+Train loss: 0.02619 | Train accuracy: 99.74%
+Test loss: 0.00012 | Test accuracy: 100.00%
+
+Epoch: 41
+---------
+Train loss: 0.01848 | Train accuracy: 100.00%
+Test loss: 0.00013 | Test accuracy: 100.00%
+
+Epoch: 42
+---------
+Train loss: 0.02196 | Train accuracy: 100.00%
+Test loss: 0.00021 | Test accuracy: 100.00%
+
+Epoch: 43
+---------
+Train loss: 0.02691 | Train accuracy: 99.74%
+Test loss: 0.00015 | Test accuracy: 100.00%
+
+Epoch: 44
+---------
+Train loss: 0.02123 | Train accuracy: 99.74%
+Test loss: 0.00021 | Test accuracy: 100.00%
+
+Epoch: 45
+---------
+Train loss: 0.01916 | Train accuracy: 100.00%
+Test loss: 0.00019 | Test accuracy: 100.00%
+
+Epoch: 46
+---------
+Train loss: 0.02235 | Train accuracy: 100.00%
+Test loss: 0.00018 | Test accuracy: 100.00%
+
+Epoch: 47
+---------
+Train loss: 0.01745 | Train accuracy: 100.00%
+Test loss: 0.00014 | Test accuracy: 100.00%
+
+Epoch: 48
+---------
+Train loss: 0.02391 | Train accuracy: 99.74%
+Test loss: 0.00012 | Test accuracy: 100.00%
+
+Epoch: 49
+---------
+Train loss: 0.02498 | Train accuracy: 99.05%
+Test loss: 0.00009 | Test accuracy: 100.00%
+
+Pesos normalizados por feature (ordenado):
+
+Top 30 Features por valor do peso normalizado:
+Pesos normalizados por feature (ordenado):
+
+Top 30 Features por valor do peso normalizado:
+Persisting feature weights...
+Persisting normalized feature weights...
+Persisting feature rankings...
+Calculating feature selection metrics...
+Avaliação dos top 10 features:
+PIFS: 1.0
+PSFI: 0.2
+Avaliação dos top 10 features:
+PIFS: 1.0
+PSFI: 0.2
+Calculating prediction metrics for model without FSL.
+Validation Metrics for model_without_fsl:
+F1 Score: 0.9800
+Accuracy: 0.9800
+Precision: 0.9807
+Recall: 0.9800
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.96      1.00      0.98        53
+           1       1.00      0.96      0.98        47
+
+    accuracy                           0.98       100
+   macro avg       0.98      0.98      0.98       100
+weighted avg       0.98      0.98      0.98       100
+
+Calculating prediction metrics for model with FSL.
+Validation Metrics for model_without_fsl:
+F1 Score: 1.0000
+Accuracy: 1.0000
+Precision: 1.0000
+Recall: 1.0000
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       1.00      1.00      1.00        53
+           1       1.00      1.00      1.00        47
+
+    accuracy                           1.00       100
+   macro avg       1.00      1.00      1.00       100
+weighted avg       1.00      1.00      1.00       100
+
+Calculating prediction metrics for model with Post-hoc FSL.
+Validation Metrics for model_without_fsl:
+F1 Score: 1.0000
+Accuracy: 1.0000
+Precision: 1.0000
+Recall: 1.0000
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       1.00      1.00      1.00        53
+           1       1.00      1.00      1.00        47
+
+    accuracy                           1.00       100
+   macro avg       1.00      1.00      1.00       100
+weighted avg       1.00      1.00      1.00       100
+
+Calculating standart t-SNE and silhouette without weights.
+Silhouette Score after applying t-SNE (without weights): -0.00015092473768163472
+Calculating weighted t-SNE and silhouette for model with FSL.
+Silhouette Score after applying t-SNE (with FSL weights): 0.16838154196739197
+Calculating weighted t-SNE and silhouette for model with Post-hoc FSL.
+Silhouette Score after applying t-SNE (with Post-hoc FSL weights): 0.20096756517887115
+Persisting models...
+Completed fold 7/11.
