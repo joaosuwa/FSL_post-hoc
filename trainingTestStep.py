@@ -11,11 +11,13 @@ def train_step(model: torch.nn.Module,
                optimizer: torch.optim.Optimizer,
                accuracy_fn,
                regularization=None,
-               device: torch.device = "cpu"):
+               device: torch.device = "cpu",
+               print_function=print,
+               l=0.001):
     train_loss, train_acc = 0, 0
     model.to(device)
     model.train()
-    for batch, (X, y) in enumerate(data_loader):
+    for _, (X, y) in enumerate(data_loader):
         # Send data to GPU
         X, y = X.to(device), y.to(device)
 
@@ -30,7 +32,7 @@ def train_step(model: torch.nn.Module,
         loss = loss_fn(y_pred_logits, y.float().unsqueeze(1))
 
         if regularization is not None:
-            loss += regularization(model)
+            loss += regularization(model, l)
 
         train_loss += loss
 
@@ -50,13 +52,14 @@ def train_step(model: torch.nn.Module,
     # Calculate loss and accuracy per epoch and print out what's happening
     train_loss /= len(data_loader)
     train_acc /= len(data_loader)
-    print(f"Train loss: {train_loss:.5f} | Train accuracy: {train_acc:.2f}%")
+    print_function(f"Train loss: {train_loss:.5f} | Train accuracy: {train_acc:.2f}%")
 
 def test_step(data_loader: torch.utils.data.DataLoader,
               model: torch.nn.Module,
               loss_fn: torch.nn.Module,
               accuracy_fn,
-              device: torch.device = "cpu"):
+              device: torch.device = "cpu",
+              print_function=print):
     test_loss, test_acc = 0, 0
     model.to(device)
     model.eval() # put model in eval mode
@@ -86,17 +89,17 @@ def test_step(data_loader: torch.utils.data.DataLoader,
         # Adjust metrics and print out
         test_loss /= len(data_loader)
         test_acc /= len(data_loader)
-        print(f"Test loss: {test_loss:.5f} | Test accuracy: {test_acc:.2f}%\n")
+        print_function(f"Test loss: {test_loss:.5f} | Test accuracy: {test_acc:.2f}%\n")
 
     return test_acc
 
-def trainingModule(model, train_dataloader, test_dataloader, n_epochs, earlyStop = False, isFSLpresent = False):
-
-    torch.manual_seed(42)
-    torch.cuda.manual_seed(42)
+def trainingModule(model, train_dataloader, validation_dataloader, n_epochs, earlyStop = False, isFSLpresent = False, print_function=print, seed=42, lr=0.001, l=0.001):
+    if seed is not None:
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
 
     if (isFSLpresent):
-        weightDecayValue = 0
+        weightDecayValue = 0.01
         regularization = fs_layer_regularization
     else:
         weightDecayValue = 0.001
@@ -104,9 +107,9 @@ def trainingModule(model, train_dataloader, test_dataloader, n_epochs, earlyStop
 
 
     loss_fn = nn.BCEWithLogitsLoss()
-    #optimizer = torch.optim.Adam(params=model.parameters(), lr=0.00025, weight_decay=weightDecayValue)
-    #optimizer = torch.optim.Adam(params=model.parameters(), lr=0.01, weight_decay=weightDecayValue)
-    optimizer = torch.optim.Adam(params=model.parameters(), lr=0.001, weight_decay=weightDecayValue)
+    #optimizer = torch.optim.AdamW(params=model.parameters(), lr=0.00025, weight_decay=weightDecayValue)
+    #optimizer = torch.optim.AdamW(params=model.parameters(), lr=0.01, weight_decay=weightDecayValue)
+    optimizer = torch.optim.AdamW(params=model.parameters(), lr=lr, weight_decay=weightDecayValue)
 
     epochs = n_epochs
 
@@ -117,22 +120,23 @@ def trainingModule(model, train_dataloader, test_dataloader, n_epochs, earlyStop
         best_model_state = None
 
     for epoch in tqdm(range(epochs)):
-        print(f"Epoch: {epoch}\n---------")
+        print_function(f"Epoch: {epoch}\n---------")
         train_step(data_loader=train_dataloader,
             model=model,
             loss_fn=loss_fn,
             optimizer=optimizer,
             accuracy_fn=accuracy_fn,
-            regularization=regularization
+            regularization=regularization,
+            print_function=print_function,
+            l=l
         )
-        test_acc = test_step(data_loader=test_dataloader,
+        test_acc = test_step(data_loader=validation_dataloader,
             model=model,
             loss_fn=loss_fn,
-            accuracy_fn=accuracy_fn
-        ) # Early Stopping
-
+            accuracy_fn=accuracy_fn,
+            print_function=print_function
+        )
         if (earlyStop):
-
             if test_acc > best_test_acc:
                 best_test_acc = test_acc
                 epochs_no_improve = 0
@@ -140,13 +144,12 @@ def trainingModule(model, train_dataloader, test_dataloader, n_epochs, earlyStop
             else:
                 epochs_no_improve += 1
                 if epochs_no_improve == patience:
-                    print(f"Early stopping at epoch {epoch} as test accuracy did not improve for {patience} epochs.")
+                    print_function(f"Early stopping at epoch {epoch} as test accuracy did not improve for {patience} epochs.")
                     break
 
     if (earlyStop):
-    
         if best_model_state is not None:
             model.load_state_dict(best_model_state)
-            print("Loaded best model state based on test accuracy.")
+            print_function("Loaded best model state based on test accuracy.")
 
     return model

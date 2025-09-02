@@ -40,3 +40,33 @@ def WTSNE(dataset, datasetName: str, model=None):
     silhouetteMetric(X_tsne, y)
 
     return X_tsne, y
+
+
+def WTSNEv2(logger, X, y, model=None, name=None):
+    title = f"t-SNE visualization without weighing"
+    X = X.copy()
+
+    if(model):
+        minMaxNormalized = min_max_normalized_weights(model)
+        X *= minMaxNormalized.detach().cpu().clone().numpy()
+        title = f"Weighted feature vectors"
+    
+    two_color_cmap = ListedColormap(['#1f77b4', '#ff0000'])
+    tsne = TSNE(n_components=2, random_state=42, perplexity=30)
+
+    X_tsne = tsne.fit_transform(X)
+
+    datapath = f'{logger.dir_path}/tsne_plot{f"_{name}" if name else ""}.png'
+    # Plot
+    plt.figure(figsize=(8, 6))
+    scatter = plt.scatter(X_tsne[:, 0], X_tsne[:, 1], c=y, cmap=two_color_cmap, alpha=0.5)
+    plt.colorbar(scatter, label="Label")
+    plt.title(title)
+    plt.xlabel("t-SNE 1")
+    plt.ylabel("t-SNE 2")
+    plt.grid(True)
+    plt.savefig(datapath)
+    plt.close()
+    #plt.show()
+
+    return X_tsne
