@@ -15,12 +15,15 @@ class SynthModel(nn.Module):
               nn.Linear(100, 128),
               nn.BatchNorm1d(128),
               nn.ReLU(),
+              nn.Dropout(0.2),
               nn.Linear(128, 64),
               nn.BatchNorm1d(64),
               nn.ReLU(),
+              nn.Dropout(0.2),
               nn.Linear(64, 16),
               nn.BatchNorm1d(16),
               nn.ReLU(),
+              nn.Dropout(0.2),
               nn.Linear(16, 1),
           )
         def forward(self, x):
@@ -35,12 +38,15 @@ class SynthModelWithFSL(nn.Module):
               nn.Linear(100, 128),
               nn.BatchNorm1d(128),
               nn.ReLU(),
+              nn.Dropout(0.2),
               nn.Linear(128, 64),
               nn.BatchNorm1d(64),
               nn.ReLU(),
+              nn.Dropout(0.2),
               nn.Linear(64, 16),
               nn.BatchNorm1d(16),
               nn.ReLU(),
+              nn.Dropout(0.2),
               nn.Linear(16, 1),
           )
         def forward(self, x):

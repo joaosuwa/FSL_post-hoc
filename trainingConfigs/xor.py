@@ -11,6 +11,7 @@ from wtsne import WTSNE
 def xorTraining():
 
     df = pd.read_csv('data/xor/xor_500samples_50features.csv')
+
     feature_cols = df.columns[:-1].to_list()
     labelCollumnStr = 'class'
 
@@ -49,6 +50,6 @@ def xorTraining():
 
     datasetName='Xor'
 
-    WTSNE(Xor_dataset, datasetName=datasetName)
-    WTSNE(Xor_dataset, datasetName=datasetName, model=modelXorFSL)
-    WTSNE(Xor_dataset, datasetName=datasetName, model=modelXorFSL_PostHoc)
+    WTSNE("test", Xor_dataset, datasetName=datasetName)
+    WTSNE("test", Xor_dataset, datasetName=datasetName, model=modelXorFSL)
+    WTSNE("test", Xor_dataset, datasetName=datasetName, model=modelXorFSL_PostHoc)

@@ -1,0 +1,264 @@
+           feature  normalized_weight
+26  informative_26           2.481307
+19  informative_19           2.434250
+18  informative_18           2.345389
+16  informative_16           2.247324
+9    informative_9           2.235678
+27  informative_27           2.158997
+4    informative_4           2.106574
+10  informative_10           1.990392
+11  informative_11           1.851762
+13  informative_13           1.847243
+3    informative_3           1.775013
+23  informative_23           1.749868
+7    informative_7           1.460290
+20  informative_20           1.193311
+14  informative_14           1.181260
+25  informative_25           1.180089
+6    informative_6           1.166129
+5    informative_5           1.134413
+29  informative_29           1.123791
+17  informative_17           0.968141
+24  informative_24           0.954544
+28  informative_28           0.923636
+21  informative_21           0.899224
+15  informative_15           0.892113
+12  informative_12           0.820809
+0    informative_0           0.716730
+2    informative_2           0.690349
+22  informative_22           0.628199
+8    informative_8           0.556659
+1    informative_1           0.433138
+82        noisy_82          -0.167401
+85        noisy_85          -0.168912
+86        noisy_86          -0.180126
+41        noisy_41          -0.185117
+66        noisy_66          -0.227551
+70        noisy_70          -0.269950
+75        noisy_75          -0.271645
+90        noisy_90          -0.293634
+51        noisy_51          -0.314200
+88        noisy_88          -0.319935
+72        noisy_72          -0.330257
+84        noisy_84          -0.331754
+87        noisy_87          -0.344978
+93        noisy_93          -0.357734
+56        noisy_56          -0.357759
+54        noisy_54          -0.368761
+38        noisy_38          -0.477697
+37        noisy_37          -0.488173
+49        noisy_49          -0.494840
+95        noisy_95          -0.509230
+65        noisy_65          -0.531980
+47        noisy_47          -0.538978
+61        noisy_61          -0.545846
+98        noisy_98          -0.567247
+48        noisy_48          -0.570124
+36        noisy_36          -0.578667
+69        noisy_69          -0.591635
+40        noisy_40          -0.613160
+53        noisy_53          -0.635502
+43        noisy_43          -0.636621
+42        noisy_42          -0.636845
+64        noisy_64          -0.640344
+34        noisy_34          -0.652312
+33        noisy_33          -0.657595
+62        noisy_62          -0.671157
+76        noisy_76          -0.678101
+89        noisy_89          -0.679755
+77        noisy_77          -0.682102
+74        noisy_74          -0.694027
+44        noisy_44          -0.699932
+63        noisy_63          -0.703716
+92        noisy_92          -0.707301
+30        noisy_30          -0.709521
+55        noisy_55          -0.722619
+71        noisy_71          -0.725002
+94        noisy_94          -0.733946
+78        noisy_78          -0.744023
+80        noisy_80          -0.744329
+73        noisy_73          -0.744845
+35        noisy_35          -0.757088
+67        noisy_67          -0.766796
+32        noisy_32          -0.768700
+39        noisy_39          -0.772815
+91        noisy_91          -0.773015
+60        noisy_60          -0.777960
+83        noisy_83          -0.784421
+59        noisy_59          -0.787903
+81        noisy_81          -0.788690
+31        noisy_31          -0.789281
+99        noisy_99          -0.792359
+79        noisy_79          -0.793289
+45        noisy_45          -0.796315
+68        noisy_68          -0.799855
+96        noisy_96          -0.799975
+50        noisy_50          -0.801084
+46        noisy_46          -0.811261
+97        noisy_97          -0.813357
+57        noisy_57          -0.817287
+58        noisy_58          -0.826394
+52        noisy_52          -0.831897
+           feature  normalized_weight  abs_weight
+26  informative_26           2.481307    2.481307
+19  informative_19           2.434250    2.434250
+18  informative_18           2.345389    2.345389
+16  informative_16           2.247324    2.247324
+9    informative_9           2.235678    2.235678
+27  informative_27           2.158997    2.158997
+4    informative_4           2.106574    2.106574
+10  informative_10           1.990392    1.990392
+11  informative_11           1.851762    1.851762
+13  informative_13           1.847243    1.847243
+3    informative_3           1.775013    1.775013
+23  informative_23           1.749868    1.749868
+7    informative_7           1.460290    1.460290
+20  informative_20           1.193311    1.193311
+14  informative_14           1.181260    1.181260
+25  informative_25           1.180089    1.180089
+6    informative_6           1.166129    1.166129
+5    informative_5           1.134413    1.134413
+29  informative_29           1.123791    1.123791
+17  informative_17           0.968141    0.968141
+24  informative_24           0.954544    0.954544
+28  informative_28           0.923636    0.923636
+21  informative_21           0.899224    0.899224
+15  informative_15           0.892113    0.892113
+12  informative_12           0.820809    0.820809
+0    informative_0           0.716730    0.716730
+2    informative_2           0.690349    0.690349
+22  informative_22           0.628199    0.628199
+8    informative_8           0.556659    0.556659
+1    informative_1           0.433138    0.433138
+           feature  normalized_weight
+11  informative_11           2.005705
+13  informative_13           1.835695
+14  informative_14           1.785516
+7    informative_7           1.768763
+9    informative_9           1.766089
+16  informative_16           1.765140
+4    informative_4           1.694742
+29  informative_29           1.651454
+18  informative_18           1.588754
+12  informative_12           1.583527
+26  informative_26           1.529784
+15  informative_15           1.516147
+25  informative_25           1.464002
+20  informative_20           1.428566
+6    informative_6           1.398583
+27  informative_27           1.382764
+3    informative_3           1.379818
+19  informative_19           1.375398
+10  informative_10           1.342309
+1    informative_1           1.278335
+22  informative_22           1.136142
+21  informative_21           1.127086
+8    informative_8           1.107147
+5    informative_5           1.065193
+24  informative_24           1.060201
+23  informative_23           1.019233
+28  informative_28           0.944161
+17  informative_17           0.908969
+2    informative_2           0.863704
+0    informative_0           0.707007
+36        noisy_36           0.618105
+70        noisy_70           0.450942
+85        noisy_85           0.346393
+56        noisy_56           0.315839
+66        noisy_66           0.298446
+75        noisy_75           0.170817
+77        noisy_77           0.164728
+95        noisy_95           0.112679
+84        noisy_84          -0.023118
+82        noisy_82          -0.151925
+62        noisy_62          -0.220916
+90        noisy_90          -0.254631
+34        noisy_34          -0.255810
+64        noisy_64          -0.256268
+41        noisy_41          -0.261893
+60        noisy_60          -0.275544
+46        noisy_46          -0.285226
+98        noisy_98          -0.369017
+69        noisy_69          -0.383433
+38        noisy_38          -0.388150
+35        noisy_35          -0.405585
+93        noisy_93          -0.406814
+51        noisy_51          -0.428410
+86        noisy_86          -0.431689
+72        noisy_72          -0.446776
+32        noisy_32          -0.470403
+57        noisy_57          -0.496311
+59        noisy_59          -0.501749
+42        noisy_42          -0.503640
+96        noisy_96          -0.505889
+67        noisy_67          -0.518796
+73        noisy_73          -0.520177
+88        noisy_88          -0.541684
+30        noisy_30          -0.548197
+87        noisy_87          -0.556203
+50        noisy_50          -0.610319
+65        noisy_65          -0.691141
+40        noisy_40          -0.711600
+89        noisy_89          -0.741218
+49        noisy_49          -0.752227
+48        noisy_48          -0.761000
+94        noisy_94          -0.766753
+83        noisy_83          -0.798954
+43        noisy_43          -0.822247
+37        noisy_37          -0.830754
+97        noisy_97          -0.878561
+68        noisy_68          -0.891637
+91        noisy_91          -0.905570
+53        noisy_53          -0.923985
+39        noisy_39          -0.936192
+45        noisy_45          -0.948454
+74        noisy_74          -0.971281
+78        noisy_78          -1.004269
+47        noisy_47          -1.013434
+44        noisy_44          -1.040563
+63        noisy_63          -1.052787
+80        noisy_80          -1.066923
+31        noisy_31          -1.071498
+55        noisy_55          -1.072224
+54        noisy_54          -1.081758
+79        noisy_79          -1.095098
+52        noisy_52          -1.107784
+58        noisy_58          -1.115284
+92        noisy_92          -1.115671
+61        noisy_61          -1.122083
+71        noisy_71          -1.124226
+76        noisy_76          -1.125576
+99        noisy_99          -1.131257
+81        noisy_81          -1.133512
+33        noisy_33          -1.133784
+           feature  normalized_weight  abs_weight
+11  informative_11           2.005705    2.005705
+13  informative_13           1.835695    1.835695
+14  informative_14           1.785516    1.785516
+7    informative_7           1.768763    1.768763
+9    informative_9           1.766089    1.766089
+16  informative_16           1.765140    1.765140
+4    informative_4           1.694742    1.694742
+29  informative_29           1.651454    1.651454
+18  informative_18           1.588754    1.588754
+12  informative_12           1.583527    1.583527
+26  informative_26           1.529784    1.529784
+15  informative_15           1.516147    1.516147
+25  informative_25           1.464002    1.464002
+20  informative_20           1.428566    1.428566
+6    informative_6           1.398583    1.398583
+27  informative_27           1.382764    1.382764
+3    informative_3           1.379818    1.379818
+19  informative_19           1.375398    1.375398
+10  informative_10           1.342309    1.342309
+1    informative_1           1.278335    1.278335
+22  informative_22           1.136142    1.136142
+21  informative_21           1.127086    1.127086
+8    informative_8           1.107147    1.107147
+5    informative_5           1.065193    1.065193
+24  informative_24           1.060201    1.060201
+23  informative_23           1.019233    1.019233
+28  informative_28           0.944161    0.944161
+17  informative_17           0.908969    0.908969
+2    informative_2           0.863704    0.863704
+0    informative_0           0.707007    0.707007

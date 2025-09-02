@@ -23,8 +23,8 @@ class FeatureSelectionV2(nn.Module):
     def get_activated_weights(self):
         return self.activation(self.weight)
     
-def fs_layer_regularization(model):
-    return 0.001 * torch.sum(torch.abs(model.block_1[0].get_weights())) # L1 regularzation
+def fs_layer_regularization(model, l=0.001):
+    return l * torch.sum(torch.abs(model.block_1[0].get_weights())) # L1 regularzation
 
 def transfer_weights(model_v1, model_v2):
     state_dict_v1 = model_v1.state_dict()

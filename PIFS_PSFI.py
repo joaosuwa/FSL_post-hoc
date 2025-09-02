@@ -1,7 +1,7 @@
 from metrics import informativeFeaturesMetric
 import matplotlib.pyplot as plt
 
-def PIFS_PSFI(models, feature_cols, datasetName: str):
+def PIFS_PSFI(executionId, models, feature_cols, datasetName: str):
     results = []
 
     for model in models:
@@ -17,7 +17,7 @@ def PIFS_PSFI(models, feature_cols, datasetName: str):
         plt.plot(x, y_PIFS, ':',label=f"{model_name} - PIFS")
         plt.plot(x, y_PSFI, '--',label=f"{model_name} - PSFI")
  
-    datapath = f'results/{datasetName} Informative Features Metric'
+    datapath = f'results/{executionId}/{datasetName} Informative Features Metric'
 
     plt.xlabel('Number of features selected')
     plt.ylabel('Percentage')

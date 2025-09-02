@@ -3,6 +3,7 @@ from torch.utils.data import Dataset
 import torch
 import pandas as pd
 
+
 class DatasetBuilder(Dataset):
     def __init__(self, dataframe, feature_cols, label_col, transform=None):
         self.data = dataframe
