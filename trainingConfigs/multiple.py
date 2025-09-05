@@ -3,11 +3,12 @@ import numpy as np
 import torch
 import pandas as pd
 from itertools import combinations
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from feature_position_walk import generate_feature_position_walk_plot
 from trainingConfigs.execution_store import ExecutionStore
 from trainingTestStep import trainingModule
-from utils import LogPrinter, calculate_kruskal_dunn, generate_execution_id, displayTopFeatures, find_normalized_weights, get_feature_rankings, get_feature_weights_as_numpy
+from utils import LogPrinter, calculate_kruskal_dunn, generate_execution_id, displayTopFeatures, find_normalized_weights, get_feature_rankings, get_feature_weights_as_numpy, persist_wtsne_input
 from data.loadDataset import folds_to_dataloaders, numpy_to_dataloaders
 from metrics import Selection_Accuracy, jaccard_similarity, pearson_correlation, silhouetteMetric, spearman_correlation
 from wtsne import WTSNEv2
@@ -15,8 +16,8 @@ from evaluation import calculate_prediction_metrics
 from featureSelectionLayer import freezeParams, transfer_weights
 
 
-def multiple_training(name, base_model, model_with_fsl, dataset_path, label_column, num_of_tests=3, test_percentage=0.2, seed=None, batch_size=32, n_epochs_base=50, n_epochs_fsl=50, 
-                      n_epochs_fsl_posthoc=50, learning_rate=0.01, should_persist=True, num_of_informative_features_to_display=10, jaccard_k_list=None, l=0.001):
+def multiple_training(name, base_model, model_with_fsl, dataset_path, label_column, has_numeric_labels=True, ignored_columns=[], num_of_tests=3, test_percentage=0.1, seed=None, batch_size=32, n_epochs_base=50, n_epochs_fsl=50, 
+                      n_epochs_fsl_posthoc=50, learning_rate=0.01, should_persist=True, num_of_informative_features_to_display=10, jaccard_k_list=None, l=0.001, scaler=StandardScaler):
     general_start_time = time.perf_counter()
 
     # Models
@@ -51,21 +52,36 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
 
     logger.log_text("Loading dataset...")
     df = pd.read_csv(dataset_path)    
-    feature_columns = df.columns[:-1].to_list()
-    informative_features = [col for col in df.columns if 'informative' in col]
+    
+    df = df.drop(ignored_columns, axis=1)
+    feature_columns = list(filter(lambda x: x != label_column, df.columns))
+    informative_features = [col for col in feature_columns if 'informative' in col]
+
+    # Prepare label columns
+
+    if not has_numeric_labels:
+        logger.log_text("Converting label values to number")
+        le = LabelEncoder()
+        df[label_column] = le.fit_transform(df[label_column])
+        logger.log_text(str(dict(zip(le.classes_, le.transform(le.classes_)))), filename="label_mapping.txt")
 
     # Split the dataset into train and test
 
     logger.log_text("Splitting dataset...")
     X = df[feature_columns]
     y = df[label_column]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_percentage, random_state=seed)
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_percentage, random_state=seed, stratify=y)
+
     logger.log_text(f"Train samples: {X_train.shape[0]}.")
     logger.log_text(f"Test samples: {X_test.shape[0]}.")
 
     # Create test dataloader
 
     logger.log_text("Creating test dataloader...")
+
+    X_test = pd.DataFrame(scaler().fit_transform(X_test), columns=X.columns) # StandardScaler
+
     test_dataloader = numpy_to_dataloaders(X_test, y_test, batch_size=batch_size)
 
     # Create KFolds
@@ -88,7 +104,7 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
 
         # Generating fold execution id 
         
-        internal_execution_id = generate_execution_id(name, external_id=execution_id, persist=should_persist)
+        internal_execution_id = generate_execution_id(name, external_id=execution_id, index=fold_index, persist=should_persist)
 
         # Generate fold logger
 
@@ -100,6 +116,8 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         fold_logger.log_text("Preparing fold dataloaders...")
         X_fold_train, X_fold_val = X_train.iloc[train_index], X_train.iloc[val_index]
         y_fold_train, y_fold_val = y_train.iloc[train_index], y_train.iloc[val_index]
+        X_fold_train = pd.DataFrame(scaler().fit_transform(X_fold_train), columns=X.columns)
+        X_fold_val = pd.DataFrame(scaler().fit_transform(X_fold_val), columns=X.columns)
         train_dataloader, val_dataloader = folds_to_dataloaders(X_fold_train, y_fold_train, X_fold_val, y_fold_val, batch_size=batch_size)
         fold_logger.log_text(f"Fold {fold_index + 1} - Train samples: {X_fold_train.shape[0]}.")
         fold_logger.log_text(f"Fold {fold_index + 1} - Validation samples: {X_fold_val.shape[0]}.")
@@ -134,8 +152,13 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
 
         # Display top features for the two models with FSL
 
-        displayTopFeatures(model_with_fsl, feature_columns, print_function=fold_logger.log_text, display_function=fold_logger.log_dataframe)
-        displayTopFeatures(model_with_fsl_posthoc, feature_columns, print_function=fold_logger.log_text, display_function=fold_logger.log_dataframe)
+        displayTopFeatures(model_with_fsl, feature_columns, print_function=fold_logger.log_text, display_function=lambda df: fold_logger.log_dataframe(df, filename="top-features-fsl.txt"))
+        displayTopFeatures(model_with_fsl_posthoc, feature_columns, print_function=fold_logger.log_text, display_function=lambda df: fold_logger.log_dataframe(df, filename="top-features-posthoc-fsl.txt"))
+
+        # Persist weights as original wtsne input
+
+        persist_wtsne_input(model_with_fsl, feature_columns, name="fsl", logger=fold_logger)
+        persist_wtsne_input(model_with_fsl_posthoc, feature_columns, name="fsl-posthoc", logger=fold_logger)
 
         # Get feature weights for the two models with FSL
 
@@ -148,7 +171,7 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
 
         fold_logger.log_text("Persisting feature weights...")
         fold_logger.log_np_array(weights_with_fsl, filename=f"fsl_feature_weights.txt", fmt='%f')
-        fold_logger.log_np_array(weights_with_fsl_posthoc, filename=f"fsl_feature_weights.txt", fmt='%f')
+        fold_logger.log_np_array(weights_with_fsl_posthoc, filename=f"fsl_posthoc_feature_weights.txt", fmt='%f')
     
         # Get normalized weights for the two models with FSL
 
@@ -208,19 +231,16 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         # Calculate weighted t-SNE and silhouette for the three models
 
         fold_logger.log_text("Calculating standart t-SNE and silhouette without weights.")
-        X_tsne = WTSNEv2(fold_logger, X, y, name="without weights")
-        silhouette = silhouetteMetric(X_tsne, y, name="without weights", print_function=fold_logger.log_text)
-        store.silhouette_without_weights.append(silhouette)
+        silhouette_without_weights = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), name="without weights")
+        store.silhouette_without_weights.append(silhouette_without_weights)
         
         fold_logger.log_text("Calculating weighted t-SNE and silhouette for model with FSL.")
-        X_tsne = WTSNEv2(fold_logger, X, y, model=model_with_fsl, name="with FSL weights")
-        silhouette = silhouetteMetric(X_tsne, y, name="with FSL weights", print_function=fold_logger.log_text)
-        store.silhouette_with_fsl.append(silhouette)
+        silhouette_with_fsl = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), model=model_with_fsl, name="with FSL weights")
+        store.silhouette_with_fsl.append(silhouette_with_fsl)
         
         fold_logger.log_text("Calculating weighted t-SNE and silhouette for model with Post-hoc FSL.")
-        X_tsne = WTSNEv2(fold_logger, X, y, model=model_with_fsl_posthoc, name="with Post-hoc FSL weights")
-        silhouette = silhouetteMetric(X_tsne, y, name="with Post-hoc FSL weights", print_function=fold_logger.log_text)
-        store.silhouette_with_fsl_posthoc.append(silhouette)
+        silhouette_with_fsl_posthoc = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), model=model_with_fsl_posthoc, name="with Post-hoc FSL weights")
+        store.silhouette_with_fsl_posthoc.append(silhouette_with_fsl_posthoc)
 
         # Persist models
 

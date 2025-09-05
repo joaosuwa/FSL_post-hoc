@@ -13,8 +13,7 @@ class FeatureSelectionV2(nn.Module):
         self.activation = nn.ReLU()
 
     def forward(self, input):
-        expanded_weight = self.activation(self.weight).expand_as(input)
-        weighted_input = input * expanded_weight
+        weighted_input = input * self.get_activated_weights()
         return weighted_input
 
     def get_weights(self):
