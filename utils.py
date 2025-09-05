@@ -56,13 +56,16 @@ def displayTopFeatures(model, feature_cols, print_function=print, display_functi
     })
 
     sorted_weights_df = weights_df.sort_values(by='normalized_weight', ascending=False)
+
     #sorted_weights_df.set_option('display.float_format', lambda x: '%.3f' % x)
+
     print_function("Pesos normalizados por feature (ordenado):")
     display_function(sorted_weights_df)
 
     sorted_weights_df['abs_weight'] = sorted_weights_df['normalized_weight']
     top_features = sorted_weights_df.sort_values(by='abs_weight', ascending=False).head(30)
     print_function("\nTop 30 Features por valor do peso normalizado:")
+
     #top_features.set_option('display.float_format', lambda x: '%.3f' % x)
     display_function(top_features)
 
@@ -90,6 +93,7 @@ def generate_execution_id(name, base_path="results", external_id="", index=None,
     execution_id = str(uuid.uuid4())
     if index is not None:
         execution_id = f"{str(index)}_{execution_id}"
+
     if persist:
         if external_id != "":
             execution_dir = os.path.join(base_path, name, external_id, execution_id)

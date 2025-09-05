@@ -15,6 +15,7 @@ def train_step(model: torch.nn.Module,
                optimizer: torch.optim.Optimizer,
                accuracy_fn,
                regularization=None,
+               device: torch.device = "cpu",
                print_function=print,
                l=0.001):
     train_loss, train_acc = 0, 0
@@ -110,6 +111,7 @@ def trainingModule(model, train_dataloader, validation_dataloader, n_epochs, ear
         all_labels.extend(labels.tolist())  # convert tensor to list and add to all_labels
 
     loss_fn = get_loss_function(train_dataloader, print_function=print_function)
+
     optimizer = torch.optim.AdamW(params=model.parameters(), lr=lr, weight_decay=weightDecayValue)
 
     epochs = n_epochs
@@ -130,7 +132,9 @@ def trainingModule(model, train_dataloader, validation_dataloader, n_epochs, ear
             print_function=print_function,
             l=l
         )
+
         _, test_loss = test_step(data_loader=validation_dataloader,
+
             model=model,
             loss_fn=loss_fn,
             accuracy_fn=accuracy_fn,

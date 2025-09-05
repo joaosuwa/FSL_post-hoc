@@ -46,7 +46,6 @@ def WTSNE(dataset, datasetName: str, model=None):
 
     return X_tsne, y
 
-
 def WTSNEv2(logger, X, y, model=None, name=None, w_scaler=MinMaxScaler, f_scaler=StandardScaler, n_components=2):
     title = f"t-SNE visualization without weighing"
     X = X.copy()
@@ -108,6 +107,7 @@ def WTSNEv2(logger, X, y, model=None, name=None, w_scaler=MinMaxScaler, f_scaler
             alpha=0.6,
             label=None  # No legend
         )
+
     plt.title(title)
     plt.xlabel("t-SNE 1")
     plt.ylabel("t-SNE 2")

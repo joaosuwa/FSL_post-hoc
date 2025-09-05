@@ -16,7 +16,6 @@ def calculate_prediction_metrics(logger, model, test_dataloader, print_function=
             y_pred_logits = model(X_batch)
             y_pred_prob = torch.sigmoid(y_pred_logits) 
             y_pred_label = torch.round(y_pred_prob) 
-            #y_pred_label = torch.argmax(y_pred_logits, dim=1)  
             y_true.extend(y_batch.cpu().numpy())
             y_pred.extend(y_pred_label.cpu().numpy())
 

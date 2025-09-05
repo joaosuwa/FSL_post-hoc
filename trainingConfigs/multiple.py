@@ -52,6 +52,7 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
 
     logger.log_text("Loading dataset...")
     df = pd.read_csv(dataset_path)    
+    
     df = df.drop(ignored_columns, axis=1)
     feature_columns = list(filter(lambda x: x != label_column, df.columns))
     informative_features = [col for col in feature_columns if 'informative' in col]
@@ -69,14 +70,18 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
     logger.log_text("Splitting dataset...")
     X = df[feature_columns]
     y = df[label_column]
+
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_percentage, random_state=seed, stratify=y)
+
     logger.log_text(f"Train samples: {X_train.shape[0]}.")
     logger.log_text(f"Test samples: {X_test.shape[0]}.")
 
     # Create test dataloader
 
     logger.log_text("Creating test dataloader...")
+
     X_test = pd.DataFrame(scaler().fit_transform(X_test), columns=X.columns) # StandardScaler
+
     test_dataloader = numpy_to_dataloaders(X_test, y_test, batch_size=batch_size)
 
     # Create KFolds

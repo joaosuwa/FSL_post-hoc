@@ -5,7 +5,6 @@ from trainingConfigs.xor_multiple import xor_multiple_training
 from trainingConfigs.synth_multiple import synth_multiple_training
 from trainingConfigs.liver import liver_multiple_training
 
-
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 liver_multiple_training()
