@@ -15,7 +15,6 @@ def train_step(model: torch.nn.Module,
                optimizer: torch.optim.Optimizer,
                accuracy_fn,
                regularization=None,
-               device: torch.device = "cpu",
                print_function=print,
                l=0.001):
     train_loss, train_acc = 0, 0
