@@ -19,6 +19,7 @@ def loadDataset(df, feature_cols, labelCollumn: str, batch_size=32, percentageSp
 
 
 def numpy_to_dataloaders(X, y, batch_size=32, shuffle=True):
+    print(y)
     X_tensor = torch.tensor(X.values, dtype=torch.float32)
     y_tensor = torch.tensor(y.values, dtype=torch.long)
     dataset = TensorDataset(X_tensor, y_tensor)

@@ -1,7 +1,12 @@
-from utils import min_max_normalized_weights
+import pandas as pd
+from sklearn import metrics
+from sklearn.discriminant_analysis import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
+from utils import get_feature_weights_as_numpy, min_max_normalized_weights
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.manifold import TSNE
+from openTSNE import TSNE as open_TSNE
+from sklearn.manifold import TSNE 
 from matplotlib.colors import ListedColormap
 from metrics import silhouetteMetric
 
@@ -42,25 +47,67 @@ def WTSNE(dataset, datasetName: str, model=None):
     return X_tsne, y
 
 
-def WTSNEv2(logger, X, y, model=None, name=None):
+def WTSNEv2(logger, X, y, model=None, name=None, w_scaler=MinMaxScaler, f_scaler=StandardScaler, n_components=2):
     title = f"t-SNE visualization without weighing"
     X = X.copy()
+    X = f_scaler().fit_transform(X)
 
-    if(model):
-        minMaxNormalized = min_max_normalized_weights(model)
-        X *= minMaxNormalized.detach().cpu().clone().numpy()
+    if model is not None:
         title = f"Weighted feature vectors"
+        W = get_feature_weights_as_numpy(model).reshape(-1, 1)
+        W = f_scaler().fit_transform(W)
+        W = np.tile(W,(1, X.shape[0])).transpose()
+        X = np.multiply(W,X)
+
+    perplexity = max(30, X.shape[0]/100)
     
-    two_color_cmap = ListedColormap(['#1f77b4', '#ff0000'])
-    tsne = TSNE(n_components=2, random_state=42, perplexity=30)
+    tsne = open_TSNE(
+        n_components=n_components,
+        perplexity=perplexity,
+        initialization='pca',
+        metric='euclidean',
+        neighbors='auto',
+        learning_rate='auto',
+        negative_gradient_method='fft',
+        verbose=True,
+        n_jobs=-1,
+        n_iter=500,
+        random_state=42,
+    )
 
-    X_tsne = tsne.fit_transform(X)
+    embedding = tsne.fit(X)
 
-    datapath = f'{logger.dir_path}/tsne_plot{f"_{name}" if name else ""}.png'
+    embedding_silhouette = metrics.silhouette_score(embedding, y, metric='euclidean')
+
+    datapath = f'{logger.dir_path}/tsne_plot{f"_{name}" if name else ""}.pdf'
+
+    colors = [
+    '#FF0000',  # Pure Red
+    '#0000FF',  # Pure Blue
+    '#008000',  # Green
+    '#FFA500',  # Orange
+    '#800080',  # Purple
+    '#00FFFF',  # Cyan
+    '#FFC0CB',  # Pink
+    '#A52A2A',  # Brown
+    '#808000',  # Olive
+    '#000000'   # Black
+    ]
+
+    markers = ['o', 's', '^', 'D', 'v', '>', '<', 'p', '*', 'X']
+
     # Plot
     plt.figure(figsize=(8, 6))
-    scatter = plt.scatter(X_tsne[:, 0], X_tsne[:, 1], c=y, cmap=two_color_cmap, alpha=0.5)
-    plt.colorbar(scatter, label="Label")
+    for i, label in enumerate(np.unique(y)):
+        idx = y == label
+        plt.scatter(
+            embedding[idx, 0],
+            embedding[idx, 1],
+            c=colors[i % len(colors)],
+            marker=markers[i % len(markers)],
+            alpha=0.6,
+            label=None  # No legend
+        )
     plt.title(title)
     plt.xlabel("t-SNE 1")
     plt.ylabel("t-SNE 2")
@@ -69,4 +116,6 @@ def WTSNEv2(logger, X, y, model=None, name=None):
     plt.close()
     #plt.show()
 
-    return X_tsne
+    logger.log_text(f"Embedding silhouette {name}: {embedding_silhouette}.")
+
+    return embedding_silhouette

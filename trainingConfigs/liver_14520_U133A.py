@@ -1,6 +1,6 @@
 import pandas as pd
 from data.loadDataset import loadDataset
-from modelConfigs.liverModules_14520_U133A import LiverModel, LiverModelWithFSL
+from modelConfigs.liverModules import LiverModel, LiverModelWithFSL
 from trainingTestStep import trainingModule
 from utils import displayTopFeatures
 from featureSelectionLayer import freezeParams, transfer_weights

@@ -5,6 +5,7 @@ import numpy as np
 from IPython.display import display
 from scipy.stats import kruskal
 from scikit_posthocs import posthoc_dunn
+import torch
 
 
 def calculate_kruskal_dunn(without_fsl_results, with_fsl_results, with_posthoc_fsl_results, p_value_threshold=0.01):
@@ -38,30 +39,42 @@ def get_feature_weights_as_numpy(model):
     return weights.squeeze().detach().cpu().numpy()
 
 def find_normalized_weights(model):
-    weights_feature_selection = model.block_1[0].get_weights()
-    mean_global = weights_feature_selection.mean()
-    std_global = weights_feature_selection.std()
+    weights = model.block_1[0].get_activated_weights()
     epsilon = 1e-8
-    normalized_weights_feature_selection = (weights_feature_selection - mean_global) / (std_global + epsilon)
-    return normalized_weights_feature_selection
+    min = torch.min(weights)
+    max = torch.max(weights)
+    return (weights - min) / (max - min + epsilon)
 
 def displayTopFeatures(model, feature_cols, print_function=print, display_function=display):
-    normalized_weights_feature_selection = find_normalized_weights(model)
+    feature_weights = get_feature_weights_as_numpy(model)
+    normalized_feature_weights = find_normalized_weights(model)
 
     weights_df = pd.DataFrame({
         'feature': feature_cols,
-        'normalized_weight': normalized_weights_feature_selection.squeeze().detach().cpu().numpy()
+        'weight': feature_weights,
+        'normalized_weight': normalized_feature_weights.squeeze().detach().cpu().numpy()
     })
 
     sorted_weights_df = weights_df.sort_values(by='normalized_weight', ascending=False)
-
+    #sorted_weights_df.set_option('display.float_format', lambda x: '%.3f' % x)
     print_function("Pesos normalizados por feature (ordenado):")
     display_function(sorted_weights_df)
 
     sorted_weights_df['abs_weight'] = sorted_weights_df['normalized_weight']
     top_features = sorted_weights_df.sort_values(by='abs_weight', ascending=False).head(30)
     print_function("\nTop 30 Features por valor do peso normalizado:")
+    #top_features.set_option('display.float_format', lambda x: '%.3f' % x)
     display_function(top_features)
+
+def persist_wtsne_input(model, feature_cols, name, logger):
+    feature_weights = get_feature_weights_as_numpy(model)
+
+    weights_df = pd.DataFrame({
+        'feature': feature_cols,
+        'value': feature_weights
+    })
+
+    weights_df.to_csv(os.path.join(logger.dir_path, f"{name}-wtsne-input.csv"), index=False, encoding='utf-8', float_format="%.10f")
 
 def min_max_normalized_weights(model): # Used to get the min_max normalized values of the feature selection
     
@@ -73,8 +86,10 @@ def min_max_normalized_weights(model): # Used to get the min_max normalized valu
 
     return min_max_normalized_weights_feature_selection
 
-def generate_execution_id(name, base_path="results", external_id="", persist=True):
+def generate_execution_id(name, base_path="results", external_id="", index=None, persist=True):
     execution_id = str(uuid.uuid4())
+    if index is not None:
+        execution_id = f"{str(index)}_{execution_id}"
     if persist:
         if external_id != "":
             execution_dir = os.path.join(base_path, name, external_id, execution_id)
@@ -98,6 +113,7 @@ class LogPrinter:
     def log_dataframe(self, dataframe, filename="output.txt"):
         display(dataframe)
         if self.persist:
+            pd.options.display.float_format = '{:.10f}'.format
             with open(os.path.join(self.dir_path, filename), "a", encoding="utf-8") as f:
                 f.write(dataframe.to_string() + "\n")
 
