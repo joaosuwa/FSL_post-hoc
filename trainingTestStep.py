@@ -1,3 +1,4 @@
+from collections import Counter
 import numpy as np
 from sklearn.utils import compute_class_weight
 import torch
@@ -16,7 +17,8 @@ def train_step(model: torch.nn.Module,
                accuracy_fn,
                regularization=None,
                print_function=print,
-               l=0.001):
+               l=0.001,
+               is_multiclass=False):
     train_loss, train_acc = 0, 0
     model.to(device)
     model.train()
@@ -26,14 +28,18 @@ def train_step(model: torch.nn.Module,
 
         # 1. Forward pass        
         y_pred_logits = model(X)
-        y_pred_prob = torch.sigmoid(y_pred_logits)  # Apply sigmoid for probabilities
-        y_pred_label = torch.round(y_pred_prob)  # Apply round for predicted labels
-        #y_pred_label = torch.argmax(y_pred_logits, dim=1)  
+        if is_multiclass:
+            y_pred_label = torch.argmax(y_pred_logits, dim=1)  
+        else:
+            y_pred_prob = torch.sigmoid(y_pred_logits)  # Apply sigmoid for probabilities
+            y_pred_label = torch.round(y_pred_prob)  # Apply round for predicted labels
 
         # 2. Calculate loss
         # Ensure y is the same dtype as y_pred_logits for BCEWithLogitsLoss
-        #loss = loss_fn(y_pred_logits, y)
-        loss = loss_fn(y_pred_logits, y.unsqueeze(1).float())
+        if is_multiclass:
+            loss = loss_fn(y_pred_logits, y)
+        else:
+            loss = loss_fn(y_pred_logits, y.unsqueeze(1).float())
 
         if regularization is not None:
             reg = regularization(model, l)
@@ -42,8 +48,10 @@ def train_step(model: torch.nn.Module,
         train_loss += loss
 
         # Calculate accuracy based on predicted labels
-        #train_acc += accuracy_fn(y_true=y, y_pred=y_pred_logits.argmax(dim=1))
-        train_acc += accuracy_fn(y_true=y, y_pred=y_pred_label.squeeze(1))
+        if is_multiclass:
+            train_acc += accuracy_fn(y_true=y, y_pred=y_pred_logits.argmax(dim=1))
+        else:
+            train_acc += accuracy_fn(y_true=y, y_pred=y_pred_label.squeeze(1))
 
         # 3. Optimizer zero grad
         optimizer.zero_grad()
@@ -63,7 +71,8 @@ def test_step(data_loader: torch.utils.data.DataLoader,
               model: torch.nn.Module,
               loss_fn: torch.nn.Module,
               accuracy_fn,
-              print_function=print):
+              print_function=print,
+              is_multiclass=False):
     test_loss, test_acc = 0, 0
     model.to(device)
     model.eval() # put model in eval mode
@@ -75,14 +84,23 @@ def test_step(data_loader: torch.utils.data.DataLoader,
 
             # 1. Forward pass
             test_pred_logits = model(X)
-            test_pred_prob = torch.sigmoid(test_pred_logits)  # Apply sigmoid for probabilities
-            test_pred_label = torch.round(test_pred_prob)  # Apply round for predicted labels
+            if is_multiclass:
+                test_pred_label = torch.argmax(test_pred_logits, dim=1)  
+            else:
+                test_pred_prob = torch.sigmoid(test_pred_logits)  # Apply sigmoid for probabilities
+                test_pred_label = torch.round(test_pred_prob)  # Apply round for predicted labels
 
             # 2. Calculate loss and accuracy
-            test_loss += loss_fn(test_pred_logits, y.unsqueeze(1).float())
-            test_acc += accuracy_fn(y_true=y,
-                y_pred=test_pred_label.squeeze(1) # Use predicted labels for accuracy
-            )
+            if is_multiclass:
+                test_loss = loss_fn(test_pred_logits, y)
+                test_acc += accuracy_fn(y_true=y,
+                    y_pred=test_pred_logits.argmax(dim=1) # Use predicted labels for accuracy
+                )
+            else:
+                test_loss += loss_fn(test_pred_logits, y.unsqueeze(1).float())
+                test_acc += accuracy_fn(y_true=y,
+                    y_pred=test_pred_label.squeeze(1) # Use predicted labels for accuracy
+                )
 
         # Adjust metrics and print out
         test_loss /= len(data_loader)
@@ -91,7 +109,7 @@ def test_step(data_loader: torch.utils.data.DataLoader,
 
     return test_acc, test_loss
 
-def trainingModule(model, train_dataloader, validation_dataloader, n_epochs, earlyStop = False, isFSLpresent = False, print_function=print, seed=42, lr=0.001, l=0.001, patience=100):
+def trainingModule(model, train_dataloader, validation_dataloader, n_epochs, earlyStop = False, isFSLpresent = False, print_function=print, seed=42, lr=0.001, l=0.001, patience=100, is_multiclass=False, num_classes=None):
     if seed is not None:
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
@@ -109,7 +127,10 @@ def trainingModule(model, train_dataloader, validation_dataloader, n_epochs, ear
         _, labels = batch  # assuming your dataset returns (input, label)
         all_labels.extend(labels.tolist())  # convert tensor to list and add to all_labels
 
-    loss_fn = get_loss_function(train_dataloader, print_function=print_function)
+    if is_multiclass:
+        loss_fn = get_weighted_cross_entropy_loss(train_dataloader, num_classes)
+    else:
+        loss_fn = get_loss_function(train_dataloader, print_function=print_function)
 
     optimizer = torch.optim.AdamW(params=model.parameters(), lr=lr, weight_decay=weightDecayValue)
 
@@ -129,15 +150,16 @@ def trainingModule(model, train_dataloader, validation_dataloader, n_epochs, ear
             accuracy_fn=accuracy_fn,
             regularization=regularization,
             print_function=print_function,
-            l=l
+            l=l,
+            is_multiclass=is_multiclass
         )
 
         _, test_loss = test_step(data_loader=validation_dataloader,
-
             model=model,
             loss_fn=loss_fn,
             accuracy_fn=accuracy_fn,
-            print_function=print_function
+            print_function=print_function,
+            is_multiclass=is_multiclass
         )
         if (earlyStop):
             if test_loss <= best_test_loss:
@@ -184,3 +206,25 @@ def get_loss_function(train_dataloader, print_function=print):
     loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
     return loss_fn
+
+def get_weighted_cross_entropy_loss(train_dataloader, num_classes):
+    # Step 1: Count label frequencies
+    label_counts = Counter()
+    for batch in train_dataloader:
+        labels = batch[1]  # assuming (inputs, labels)
+        label_counts.update(labels.tolist())
+
+    # Step 2: Compute class weights (inverse frequency)
+        total = sum(label_counts.values())
+    w0 = total / (label_counts[0] + 1e-6)
+    w1 = total / (label_counts[1] + 1e-6)
+
+    # Step 3: Normalize weights
+    weights = torch.tensor([w0, w1], dtype=torch.float).to(device)
+    weights = weights / weights.sum()  # normalize
+
+    # Step 4: Create the loss function
+    loss_fn = nn.CrossEntropyLoss(weight=weights)
+
+    return loss_fn
+

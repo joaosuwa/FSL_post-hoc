@@ -8,12 +8,14 @@ from sklearn.model_selection import StratifiedKFold, train_test_split
 from feature_position_walk import generate_feature_position_walk_plot
 from trainingConfigs.execution_store import ExecutionStore
 from trainingTestStep import trainingModule
-from utils import LogPrinter, calculate_kruskal_dunn, generate_execution_id, displayTopFeatures, find_normalized_weights, get_feature_rankings, get_feature_weights_as_numpy, persist_wtsne_input
+from utils import LogPrinter, calculate_kruskal_dunn_3, calculate_kruskal_dunn_5, calculate_normalized_weights, generate_execution_id, displayTopFeatures, find_normalized_weights, get_feature_rankings, get_feature_weights_as_numpy, persist_wtsne_input, calculate_aggregated_feature_importance
 from data.loadDataset import folds_to_dataloaders, numpy_to_dataloaders
 from metrics import Selection_Accuracy, jaccard_similarity, pearson_correlation, silhouetteMetric, spearman_correlation
 from wtsne import WTSNEv2
 from evaluation import calculate_prediction_metrics
 from featureSelectionLayer import freezeParams, transfer_weights
+from captum.attr import LayerConductance, LayerActivation, LayerIntegratedGradients
+from captum.attr import IntegratedGradients, DeepLift, GradientShap, NoiseTunnel, FeatureAblation
 
 
 def multiple_training(name, base_model, model_with_fsl, dataset_path, label_column, has_numeric_labels=True, ignored_columns=[], num_of_tests=3, test_percentage=0.1, seed=None, batch_size=32, n_epochs_base=50, n_epochs_fsl=50, 
@@ -150,30 +152,81 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         elapsed = time.perf_counter() - start_time
         store.training_time_with_fsl_posthoc.append(elapsed)
 
-        # Display top features for the two models with FSL
+        # Apply others posthoc methods
 
+        ig = IntegratedGradients(model_without_fsl)
+        ig_nt = NoiseTunnel(ig)
+        dl = DeepLift(model_without_fsl)
+        gs = GradientShap(model_without_fsl)
+        fa = FeatureAblation(model_without_fsl)
+
+        integrated_gradients_attributes = ig.attribute(X_test, n_steps=50)
+        noise_tunnel_attributes = ig_nt.attribute(X_test)
+        deep_lift_attributes = dl.attribute(X_test)
+        gradient_shap_attributes = gs.attribute(X_test, X_fold_train)
+        feature_ablation_attributes = fa.attribute(X_test)
+
+        integrated_gradients_feature_weights = calculate_aggregated_feature_importance(integrated_gradients_attributes)
+        noise_tunnel_feature_weights = calculate_aggregated_feature_importance(noise_tunnel_attributes)
+        deep_lift_feature_weights = calculate_aggregated_feature_importance(deep_lift_attributes)
+        gradient_shap_feature_weights = calculate_aggregated_feature_importance(gradient_shap_attributes)
+        feature_ablation_feature_weights = calculate_aggregated_feature_importance(feature_ablation_attributes)
+
+        # Display top features
+
+        displayTopFeatures(None, feature_columns, feature_weights=integrated_gradients_feature_weights, print_function=fold_logger.log_text, display_function=lambda df: fold_logger.log_dataframe(df, filename="top-features-integrated-gradients.txt"))
+        displayTopFeatures(None, feature_columns, feature_weights=noise_tunnel_feature_weights, print_function=fold_logger.log_text, display_function=lambda df: fold_logger.log_dataframe(df, filename="top-features-noise-tunnel.txt"))
+        displayTopFeatures(None, feature_columns, feature_weights=deep_lift_feature_weights, print_function=fold_logger.log_text, display_function=lambda df: fold_logger.log_dataframe(df, filename="top-features-deep-lift.txt"))
+        displayTopFeatures(None, feature_columns, feature_weights=gradient_shap_feature_weights, print_function=fold_logger.log_text, display_function=lambda df: fold_logger.log_dataframe(df, filename="top-features-gradient-shap.txt"))
+        displayTopFeatures(None, feature_columns, feature_weights=feature_ablation_feature_weights, print_function=fold_logger.log_text, display_function=lambda df: fold_logger.log_dataframe(df, filename="top-features-feature-ablation.txt"))
+        
         displayTopFeatures(model_with_fsl, feature_columns, print_function=fold_logger.log_text, display_function=lambda df: fold_logger.log_dataframe(df, filename="top-features-fsl.txt"))
         displayTopFeatures(model_with_fsl_posthoc, feature_columns, print_function=fold_logger.log_text, display_function=lambda df: fold_logger.log_dataframe(df, filename="top-features-posthoc-fsl.txt"))
 
         # Persist weights as original wtsne input
 
+        persist_wtsne_input(None, feature_columns, feature_weights=integrated_gradients_feature_weights, name="integrated-gradients", logger=fold_logger)
+        persist_wtsne_input(None, feature_columns, feature_weights=noise_tunnel_feature_weights, name="noise-tunnel", logger=fold_logger)
+        persist_wtsne_input(None, feature_columns, feature_weights=deep_lift_feature_weights, name="deep-lift", logger=fold_logger)
+        persist_wtsne_input(None, feature_columns, feature_weights=gradient_shap_feature_weights, name="gradient-shap", logger=fold_logger)
+        persist_wtsne_input(None, feature_columns, feature_weights=feature_ablation_feature_weights, name="feature-ablation", logger=fold_logger)
+
         persist_wtsne_input(model_with_fsl, feature_columns, name="fsl", logger=fold_logger)
         persist_wtsne_input(model_with_fsl_posthoc, feature_columns, name="fsl-posthoc", logger=fold_logger)
 
-        # Get feature weights for the two models with FSL
+        # Save feature weights 
+
+        store.feature_weights_integrated_gradients(integrated_gradients_feature_weights)
+        store.feature_weights_noise_tunnel(noise_tunnel_feature_weights)
+        store.feature_weights_deep_lift(deep_lift_feature_weights)
+        store.feature_weights_gradient_shap(gradient_shap_feature_weights)
+        store.feature_weights_feature_ablation(feature_ablation_feature_weights)
 
         weights_with_fsl = get_feature_weights_as_numpy(model_with_fsl)
-        store.feature_weights_results_with_fsl.append(weights_with_fsl)
+        store.feature_weights_fsl.append(weights_with_fsl)
         weights_with_fsl_posthoc = get_feature_weights_as_numpy(model_with_fsl_posthoc)
-        store.feature_weights_results_with_fsl_posthoc.append(weights_with_fsl_posthoc)
+        store.feature_weights_fsl_posthoc.append(weights_with_fsl_posthoc)
 
-        # Persist feature weights for the two models with FSL
+        # Persist feature weights
 
         fold_logger.log_text("Persisting feature weights...")
+
+        fold_logger.log_np_array(integrated_gradients_feature_weights, filename=f"integrated_gradients_feature_weights.txt", fmt='%f')
+        fold_logger.log_np_array(noise_tunnel_feature_weights, filename=f"noise_tunnel_feature_weights.txt", fmt='%f')
+        fold_logger.log_np_array(deep_lift_feature_weights, filename=f"deep_lift_feature_weights.txt", fmt='%f')
+        fold_logger.log_np_array(gradient_shap_feature_weights, filename=f"gradient_shap_feature_weights.txt", fmt='%f')
+        fold_logger.log_np_array(feature_ablation_feature_weights, filename=f"feature_ablation_feature_weights.txt", fmt='%f')
+
         fold_logger.log_np_array(weights_with_fsl, filename=f"fsl_feature_weights.txt", fmt='%f')
         fold_logger.log_np_array(weights_with_fsl_posthoc, filename=f"fsl_posthoc_feature_weights.txt", fmt='%f')
     
         # Get normalized weights for the two models with FSL
+
+        integrated_gradients_normalized_feature_weights = calculate_normalized_weights(integrated_gradients_feature_weights)
+        noise_tunnel_normalized_feature_weights = calculate_normalized_weights(noise_tunnel_feature_weights)
+        deep_lift_normalized_feature_weights = calculate_normalized_weights(deep_lift_feature_weights)
+        gradient_shap_normalized_feature_weights = calculate_normalized_weights(gradient_shap_feature_weights)
+        feature_ablation_normalized_feature_weights = calculate_normalized_weights(feature_ablation_feature_weights)
 
         fsl_normalized_feature_weights = find_normalized_weights(model_with_fsl)
         fsl_posthoc_normalized_feature_weights = find_normalized_weights(model_with_fsl_posthoc)
@@ -181,23 +234,64 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         # Persist normalized feature weights for the two models with FSL
 
         fold_logger.log_text("Persisting normalized feature weights...")
+
+        fold_logger.log_np_array(integrated_gradients_normalized_feature_weights.squeeze().detach().cpu().numpy(), filename=f"integrated_gradients_normalized_feature_weights.txt", fmt='%f')
+        fold_logger.log_np_array(noise_tunnel_normalized_feature_weights.squeeze().detach().cpu().numpy(), filename=f"noise_tunnel_normalized_feature_weights.txt", fmt='%f')
+        fold_logger.log_np_array(deep_lift_normalized_feature_weights.squeeze().detach().cpu().numpy(), filename=f"deep_lift_normalized_feature_weights.txt", fmt='%f')
+        fold_logger.log_np_array(gradient_shap_normalized_feature_weights.squeeze().detach().cpu().numpy(), filename=f"gradient_shap_normalized_feature_weights.txt", fmt='%f')
+        fold_logger.log_np_array(feature_ablation_normalized_feature_weights.squeeze().detach().cpu().numpy(), filename=f"feature_ablation_normalized_feature_weights.txt", fmt='%f')
+
         fold_logger.log_np_array(fsl_normalized_feature_weights.squeeze().detach().cpu().numpy(), filename=f"fsl_normalized_feature_weights.txt", fmt='%f')
         fold_logger.log_np_array(fsl_posthoc_normalized_feature_weights.squeeze().detach().cpu().numpy(), filename=f"fsl_posthoc_normalized_feature_weights.txt", fmt='%f')
 
         # Persist feature rankings for the two models with FSL
 
         fold_logger.log_text("Persisting feature rankings...")
+
+        fold_logger.log_np_array(get_feature_rankings(None, feature_columns, weights=integrated_gradients_feature_weights), filename=f"integrated_gradients_feature_rankings.txt", fmt='%s')
+        fold_logger.log_np_array(get_feature_rankings(None, feature_columns, weights=noise_tunnel_feature_weights), filename=f"noise_tunnel_feature_rankings.txt", fmt='%s')
+        fold_logger.log_np_array(get_feature_rankings(None, feature_columns, weights=deep_lift_feature_weights), filename=f"deep_lift_feature_rankings.txt", fmt='%s')
+        fold_logger.log_np_array(get_feature_rankings(None, feature_columns, weights=gradient_shap_feature_weights), filename=f"gradient_shap_feature_rankings.txt", fmt='%s')
+        fold_logger.log_np_array(get_feature_rankings(None, feature_columns, weights=feature_ablation_feature_weights), filename=f"feature_ablation_feature_rankings.txt", fmt='%s')
+
         fold_logger.log_np_array(get_feature_rankings(model_with_fsl, feature_columns), filename=f"fsl_feature_rankings.txt", fmt='%s')
         fold_logger.log_np_array(get_feature_rankings(model_with_fsl_posthoc, feature_columns), filename=f"fsl_posthoc_feature_rankings.txt", fmt='%s')
 
-        # Calculate feature selection metrics for the two models with FSL
+        # Calculate feature selection metrics
 
         if len(informative_features) > 0:
             fold_logger.log_text("Calculating feature selection metrics...")
+
+            pifs, psfi = Selection_Accuracy(integrated_gradients_normalized_feature_weights.squeeze().detach().cpu().clone(), informative_features, 
+                               num_of_informative_features_to_display, feature_columns, print_function=fold_logger.log_text)
+            store.pifs_with_integrated_gradients.append(pifs)
+            store.psfi_with_integrated_gradients.append(psfi)
+
+            pifs, psfi = Selection_Accuracy(noise_tunnel_normalized_feature_weights.squeeze().detach().cpu().clone(), informative_features, 
+                               num_of_informative_features_to_display, feature_columns, print_function=fold_logger.log_text)
+            store.pifs_with_noise_tunnel.append(pifs)
+            store.psfi_with_noise_tunnel.append(psfi)
+
+            pifs, psfi = Selection_Accuracy(deep_lift_normalized_feature_weights.squeeze().detach().cpu().clone(), informative_features, 
+                               num_of_informative_features_to_display, feature_columns, print_function=fold_logger.log_text)
+            store.pifs_with_deep_lift.append(pifs)
+            store.psfi_with_deep_lift.append(psfi)
+
+            pifs, psfi = Selection_Accuracy(gradient_shap_normalized_feature_weights.squeeze().detach().cpu().clone(), informative_features, 
+                               num_of_informative_features_to_display, feature_columns, print_function=fold_logger.log_text)
+            store.pifs_with_gradient_shap.append(pifs)
+            store.psfi_with_gradient_shap.append(psfi)
+
+            pifs, psfi = Selection_Accuracy(feature_ablation_normalized_feature_weights.squeeze().detach().cpu().clone(), informative_features, 
+                               num_of_informative_features_to_display, feature_columns, print_function=fold_logger.log_text)
+            store.pifs_with_feature_ablation.append(pifs)
+            store.psfi_with_feature_ablation.append(psfi)
+
             pifs, psfi = Selection_Accuracy(fsl_normalized_feature_weights.squeeze().detach().cpu().clone(), informative_features, 
                                num_of_informative_features_to_display, feature_columns, print_function=fold_logger.log_text)
             store.pifs_with_fsl.append(pifs)
             store.psfi_with_fsl.append(psfi)
+
             pifs, psfi = Selection_Accuracy(fsl_posthoc_normalized_feature_weights.squeeze().detach().cpu().clone(), informative_features, 
                                num_of_informative_features_to_display, feature_columns, print_function=fold_logger.log_text)
             store.pifs_with_fsl_posthoc.append(pifs)
@@ -228,11 +322,31 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         store.precision_with_fsl_posthoc.append(precision)
         store.recall_with_fsl_posthoc.append(recall)
 
-        # Calculate weighted t-SNE and silhouette for the three models
+        # Calculate weighted t-SNE and silhouette
 
         fold_logger.log_text("Calculating standart t-SNE and silhouette without weights.")
         silhouette_without_weights = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), name="without weights")
         store.silhouette_without_weights.append(silhouette_without_weights)
+
+        fold_logger.log_text("Calculating weighted t-SNE and silhouette for Integrated Gradients.")
+        silhouette_with_integrated_gradients = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), weights=integrated_gradients_feature_weights, name="with Integrated Gradients weights")
+        store.silhouette_with_integrated_gradients.append(silhouette_with_integrated_gradients)
+
+        fold_logger.log_text("Calculating weighted t-SNE and silhouette for Noise Tunnel.")
+        silhouette_with_noise_tunnel = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), weights=noise_tunnel_feature_weights, name="with Noise Tunnel weights")
+        store.silhouette_with_noise_tunnel.append(silhouette_with_noise_tunnel)
+
+        fold_logger.log_text("Calculating weighted t-SNE and silhouette for Deep Lift.")
+        silhouette_with_deep_lift = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), weights=deep_lift_feature_weights, name="with Deep Lift weights")
+        store.silhouette_with_deep_lift.append(silhouette_with_deep_lift)
+
+        fold_logger.log_text("Calculating weighted t-SNE and silhouette for Gradient SHAP.")
+        silhouette_with_gradient_shap = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), weights=gradient_shap_feature_weights, name="with Gradient SHAP weights")
+        store.silhouette_with_gradient_shap.append(silhouette_with_gradient_shap)
+
+        fold_logger.log_text("Calculating weighted t-SNE and silhouette for Feature Ablation.")
+        silhouette_with_feature_ablation = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), weights=feature_ablation_feature_weights, name="with Feature Ablation weights")
+        store.silhouette_with_feature_ablation.append(silhouette_with_feature_ablation)
         
         fold_logger.log_text("Calculating weighted t-SNE and silhouette for model with FSL.")
         silhouette_with_fsl = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), model=model_with_fsl, name="with FSL weights")
@@ -260,39 +374,56 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
     # Calculate averages and standard deviations
 
     logger.log_text("Calculating statistics...")
+
+    # Training time
     stat_training_time_without_weights = (pd.Series(store.training_time_without_weights).mean(), pd.Series(store.training_time_without_weights).std())
     stat_training_time_with_fsl = (pd.Series(store.training_time_with_fsl).mean(), pd.Series(store.training_time_with_fsl).std())
     stat_training_time_with_fsl_posthoc = (pd.Series(store.training_time_with_fsl_posthoc).mean(), pd.Series(store.training_time_with_fsl_posthoc).std())
+
+    # F1 scores
     stat_f1_scores_without_weights = (pd.Series(store.f1_scores_without_weights).mean(), pd.Series(store.f1_scores_without_weights).std())
     stat_f1_scores_with_fsl = (pd.Series(store.f1_scores_with_fsl).mean(), pd.Series(store.f1_scores_with_fsl).std())
     stat_f1_scores_with_fsl_posthoc = (pd.Series(store.f1_scores_with_fsl_posthoc).mean(), pd.Series(store.f1_scores_with_fsl_posthoc).std())
+
+    # Accuracy
     stat_accuracy_without_weights = (pd.Series(store.accuracy_without_weights).mean(), pd.Series(store.accuracy_without_weights).std())
     stat_accuracy_with_fsl = (pd.Series(store.accuracy_with_fsl).mean(), pd.Series(store.accuracy_with_fsl).std())
     stat_accuracy_with_fsl_posthoc = (pd.Series(store.accuracy_with_fsl_posthoc).mean(), pd.Series(store.accuracy_with_fsl_posthoc).std())
+
+    # Precision
     stat_precision_without_weights = (pd.Series(store.precision_without_weights).mean(), pd.Series(store.precision_without_weights).std())
     stat_precision_with_fsl = (pd.Series(store.precision_with_fsl).mean(), pd.Series(store.precision_with_fsl).std())
     stat_precision_with_fsl_posthoc = (pd.Series(store.precision_with_fsl_posthoc).mean(), pd.Series(store.precision_with_fsl_posthoc).std())
+
+    # Recall
     stat_recall_without_weights = (pd.Series(store.recall_without_weights).mean(), pd.Series(store.recall_without_weights).std())
     stat_recall_with_fsl = (pd.Series(store.recall_with_fsl).mean(), pd.Series(store.recall_with_fsl).std())
     stat_recall_with_fsl_posthoc = (pd.Series(store.recall_with_fsl_posthoc).mean(), pd.Series(store.recall_with_fsl_posthoc).std())
+
+    # Silhouette
     stat_silhouette_without_weights = (pd.Series(store.silhouette_without_weights).mean(), pd.Series(store.silhouette_without_weights).std())
+    stat_silhouette_integrated_gradients = (pd.Series(store.silhouette_with_integrated_gradients).mean(), pd.Series(store.silhouette_with_integrated_gradients).std())
+    stat_silhouette_noise_tunnel = (pd.Series(store.silhouette_with_noise_tunnel).mean(), pd.Series(store.silhouette_with_noise_tunnel).std())
+    stat_silhouette_deep_lift = (pd.Series(store.silhouette_with_deep_lift).mean(), pd.Series(store.silhouette_with_deep_lift).std())
+    stat_silhouette_gradient_shap = (pd.Series(store.silhouette_with_gradient_shap).mean(), pd.Series(store.silhouette_with_gradient_shap).std())
+    stat_silhouette_feature_ablation = (pd.Series(store.silhouette_with_feature_ablation).mean(), pd.Series(store.silhouette_with_feature_ablation).std())
     stat_silhouette_with_fsl = (pd.Series(store.silhouette_with_fsl).mean(), pd.Series(store.silhouette_with_fsl).std())
     stat_silhouette_with_fsl_posthoc = (pd.Series(store.silhouette_with_fsl_posthoc).mean(), pd.Series(store.silhouette_with_fsl_posthoc).std())
 
     # Calculate kruskal-wallis test and dunn's post-hoc test
 
     logger.log_text("Calculating Kruskal-Wallis and Dunn's tests...")
-    training_time_kruskal_dunn_result = calculate_kruskal_dunn(store.training_time_without_weights, store.training_time_with_fsl, store.training_time_with_fsl_posthoc)
-    f1_scores_kruskal_dunn_result = calculate_kruskal_dunn(store.f1_scores_without_weights, store.f1_scores_with_fsl, store.f1_scores_with_fsl_posthoc)
-    accuracy_kruskal_dunn_result = calculate_kruskal_dunn(store.accuracy_without_weights, store.accuracy_with_fsl, store.accuracy_with_fsl_posthoc)
-    precision_kruskal_dunn_result = calculate_kruskal_dunn(store.precision_without_weights, store.precision_with_fsl, store.precision_with_fsl_posthoc)
-    recall_kruskal_dunn_result = calculate_kruskal_dunn(store.recall_without_weights, store.recall_with_fsl, store.recall_with_fsl_posthoc)
-    silhouette_kruskal_dunn_result = calculate_kruskal_dunn(store.silhouette_without_weights, store.silhouette_with_fsl, store.silhouette_with_fsl_posthoc)
+    training_time_kruskal_dunn_result = calculate_kruskal_dunn_3(store.training_time_without_weights, store.training_time_with_fsl, store.training_time_with_fsl_posthoc)
+    f1_scores_kruskal_dunn_result = calculate_kruskal_dunn_3(store.f1_scores_without_weights, store.f1_scores_with_fsl, store.f1_scores_with_fsl_posthoc)
+    accuracy_kruskal_dunn_result = calculate_kruskal_dunn_3(store.accuracy_without_weights, store.accuracy_with_fsl, store.accuracy_with_fsl_posthoc)
+    precision_kruskal_dunn_result = calculate_kruskal_dunn_3(store.precision_without_weights, store.precision_with_fsl, store.precision_with_fsl_posthoc)
+    recall_kruskal_dunn_result = calculate_kruskal_dunn_3(store.recall_without_weights, store.recall_with_fsl, store.recall_with_fsl_posthoc)
+    silhouette_kruskal_dunn_result = calculate_kruskal_dunn_5(store.silhouette_without_weights, store.silhouette_with_integrated_gradients, store.silhouette_with_noise_tunnel, store.silhouette_with_deep_lift, store.silhouette_with_gradient_shap, store.silhouette_with_feature_ablation, store.silhouette_with_fsl, store.silhouette_with_fsl_posthoc)
 
     # Calculate stability metrics
 
     logger.log_text("Calculating stability metrics...")
-    for [model_name, feature_weights_results] in [["FSL", store.feature_weights_results_with_fsl], ["Post-hoc FSL", store.feature_weights_results_with_fsl_posthoc]]:
+    for [model_name, feature_weights_results] in [["Integrated Gradients", store.feature_weights_integrated_gradients], ["Noise Tunnel", store.feature_weights_noise_tunnel], ["Deep Lift", store.feature_weights_deep_lift], ["Gradient SHAP", store.feature_weights_gradient_shap], ["Feature Ablation", store.feature_weights_feature_ablation], ["FSL", store.feature_weights_fsl], ["Post-hoc FSL", store.feature_weights_fsl_posthoc]]:
 
         logger.log_text(f"Calculating statistic metrics for {model_name}...")
         results = []
@@ -360,6 +491,11 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         messages.append("Recall with Post-hoc FSL: " + str(store.recall_with_fsl_posthoc) + "\n statistics: " + str(stat_recall_with_fsl_posthoc) + "\n")
         messages.append("Kruskal-Wallis and Dunn's test for recall: " + recall_kruskal_dunn_result + "\n")
         messages.append("Silhouette without FSL: " + str(store.silhouette_without_weights) + "\n statistics: " + str(stat_silhouette_without_weights) + "\n")
+        messages.append("Silhouette with Integrated Gradients: " + str(store.silhouette_with_integrated_gradients) + "\n statistics: " + str(stat_silhouette_integrated_gradients) + "\n")
+        messages.append("Silhouette with Noise Tunnel: " + str(store.silhouette_with_noise_tunnel) + "\n statistics: " + str(stat_silhouette_noise_tunnel) + "\n")
+        messages.append("Silhouette with Deep Lift: " + str(store.silhouette_with_noise_tunnel) + "\n statistics: " + str(stat_silhouette_noise_tunnel) + "\n")
+        messages.append("Silhouette with Gradient SHAP: " + str(store.silhouette_with_gradient_shap) + "\n statistics: " + str(stat_silhouette_gradient_shap) + "\n")
+        messages.append("Silhouette with Feature Ablation: " + str(store.silhouette_with_feature_ablation) + "\n statistics: " + str(stat_silhouette_feature_ablation) + "\n")
         messages.append("Silhouette with FSL: " + str(store.silhouette_with_fsl) + "\n statistics: " + str(stat_silhouette_with_fsl) + "\n")
         messages.append("Silhouette with Post-hoc FSL: " + str(store.silhouette_with_fsl_posthoc) + "\n statistics: " + str(stat_silhouette_with_fsl_posthoc) + "\n")
         messages.append("Kruskal-Wallis and Dunn's test for silhouette: " + silhouette_kruskal_dunn_result + "\n")
@@ -374,8 +510,15 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
     # Generate feature position walk plots for the two models with FSL
 
     logger.log_text("Generating feature position walk plots...")
-    generate_feature_position_walk_plot(logger, store.feature_weights_results_with_fsl, feature_columns, model_name="FSL", informative_features=informative_features)
-    generate_feature_position_walk_plot(logger, store.feature_weights_results_with_fsl_posthoc, feature_columns, model_name="Post-hoc FSL", informative_features=informative_features)
+
+    generate_feature_position_walk_plot(logger, store.feature_weights_integrated_gradients, feature_columns, model_name="Integrated Gradients", informative_features=informative_features)
+    generate_feature_position_walk_plot(logger, store.feature_weights_noise_tunnel, feature_columns, model_name="Noise Tunnel", informative_features=informative_features)
+    generate_feature_position_walk_plot(logger, store.feature_weights_deep_lift, feature_columns, model_name="Deep Lift", informative_features=informative_features)
+    generate_feature_position_walk_plot(logger, store.feature_weights_gradient_shap, feature_columns, model_name="Gradient SHAP", informative_features=informative_features)
+    generate_feature_position_walk_plot(logger, store.feature_weights_feature_ablation, feature_columns, model_name="Feature Ablation", informative_features=informative_features)
+
+    generate_feature_position_walk_plot(logger, store.feature_weights_fsl, feature_columns, model_name="FSL", informative_features=informative_features)
+    generate_feature_position_walk_plot(logger, store.feature_weights_fsl_posthoc, feature_columns, model_name="Post-hoc FSL", informative_features=informative_features)
 
     # End of execution
 

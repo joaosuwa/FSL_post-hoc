@@ -13,8 +13,7 @@ class FeatureSelectionV2(nn.Module):
         self.activation = nn.ReLU()
 
     def forward(self, input):
-        weighted_input = input * self.get_activated_weights()
-        return weighted_input
+        return input * self.get_activated_weights()
 
     def get_weights(self):
         return self.weight
@@ -22,8 +21,36 @@ class FeatureSelectionV2(nn.Module):
     def get_activated_weights(self):
         return self.activation(self.weight)
     
+class TabNetFeatureSelectionV2(nn.Module):
+    def __init__(self, in_features, internal_model, name='', freeze_internal_model=True):
+        super().__init__()
+        self.name = name
+        initial_weight = 1.0 * torch.ones(1, in_features).to(device)
+        self.weight = nn.Parameter(initial_weight)
+        self.activation = nn.ReLU()
+        self.internal_model = internal_model
+        self.block_1 = [self]
+        for param in self.internal_model.parameters():
+            param.requires_grad = not freeze_internal_model
+
+    def forward(self, input):
+        weighted_input = input * self.get_activated_weights()
+        output, M_loss = self.internal_model.forward(weighted_input)
+        return output
+
+    def get_weights(self):
+        return self.weight
+
+    def get_activated_weights(self):
+        return self.activation(self.weight)
+    
+    def train(self, value=True):
+        super().train(value)
+        self.internal_model.train(value)
+
 def fs_layer_regularization(model, l=0.001):
-    return l * torch.sum(torch.abs(model.block_1[0].get_weights())) # L1 regularzation
+    # L1 regularzation
+    return l * torch.sum(torch.abs(model.block_1[0].get_weights()))
 
 def transfer_weights(model_v1, model_v2):
     state_dict_v1 = model_v1.state_dict()

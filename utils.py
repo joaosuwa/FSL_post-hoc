@@ -8,7 +8,7 @@ from scikit_posthocs import posthoc_dunn
 import torch
 
 
-def calculate_kruskal_dunn(without_fsl_results, with_fsl_results, with_posthoc_fsl_results, p_value_threshold=0.01):
+def calculate_kruskal_dunn_3(without_fsl_results, with_fsl_results, with_posthoc_fsl_results, p_value_threshold=0.01):
     result = ""
     try:
         _, p_value = kruskal(without_fsl_results, with_fsl_results, with_posthoc_fsl_results)
@@ -29,8 +29,58 @@ def calculate_kruskal_dunn(without_fsl_results, with_fsl_results, with_posthoc_f
         result = "No significant difference (p ≥ 0.01)."
     return result
 
-def get_feature_rankings(model, feature_columns):
-    weights = get_feature_weights_as_numpy(model)
+def calculate_kruskal_dunn_5(without_fsl_results, with_integrated_gradients_results, with_noise_tunnel_results, with_deep_lift_results, with_gradient_shap_results, with_feature_ablation_results, with_fsl_results, with_posthoc_fsl_results, p_value_threshold=0.01):
+    result = ""
+    try:
+        _, p_value = kruskal(without_fsl_results, with_integrated_gradients_results, with_noise_tunnel_results, with_deep_lift_results, with_gradient_shap_results, with_feature_ablation_results, with_fsl_results, with_posthoc_fsl_results)
+    except ValueError as e:
+        if "All numbers are identical" in str(e):
+            p_value = 1.0  # No difference
+        else:
+            raise
+    if p_value < p_value_threshold:
+        result += "Significant difference detected (p < 0.01). "
+        data = without_fsl_results + with_fsl_results + with_posthoc_fsl_results
+        groups = ['without_weights'] * len(without_fsl_results)  
+        + ['with_integrated_gradients_results'] * len(with_integrated_gradients_results) 
+        + ['with_noise_tunnel_results'] * len(with_noise_tunnel_results) 
+        + ['with_deep_lift_results'] * len(with_deep_lift_results) 
+        + ['with_gradient_shap_results'] * len(with_gradient_shap_results) 
+        + ['with_feature_ablation_results'] * len(with_feature_ablation_results) 
+        + ['with_fsl'] * len(with_fsl_results)
+        + ['with_posthoc_fsl'] * len(with_posthoc_fsl_results)
+        df = pd.DataFrame({'value': data, 'group': groups})
+        # Dunn’s test with Bonferroni correction
+        dunn_results = posthoc_dunn(df, val_col='value', group_col='group', p_adjust='bonferroni')
+        result += f"Dunn's post-hoc test results (p-values):\n {dunn_results}"
+    else:
+        result = "No significant difference (p ≥ 0.01)."
+    return result
+
+def calculate_kruskal_dunn_2(tabnet_results, with_fsl_results, p_value_threshold=0.01):
+    result = ""
+    try:
+        _, p_value = kruskal(tabnet_results, with_fsl_results)
+    except ValueError as e:
+        if "All numbers are identical" in str(e):
+            p_value = 1.0  # No difference
+        else:
+            raise
+    if p_value < p_value_threshold:
+        result += "Significant difference detected (p < 0.01). "
+        data = tabnet_results + with_fsl_results
+        groups = ['tabnet'] * len(tabnet_results) + ['with_fsl'] * len(with_fsl_results)
+        df = pd.DataFrame({'value': data, 'group': groups})
+        # Dunn’s test with Bonferroni correction
+        dunn_results = posthoc_dunn(df, val_col='value', group_col='group', p_adjust='bonferroni')
+        result += f"Dunn's post-hoc test results (p-values):\n {dunn_results}"
+    else:
+        result = "No significant difference (p ≥ 0.01)."
+    return result
+
+def get_feature_rankings(model, feature_columns, weights=None):
+    if weights is None:
+        weights = get_feature_weights_as_numpy(model)
     ordered_indices = weights.argsort()[::-1]
     return [feature_columns[i] for i in ordered_indices]
 
@@ -40,14 +90,20 @@ def get_feature_weights_as_numpy(model):
 
 def find_normalized_weights(model):
     weights = model.block_1[0].get_activated_weights()
+    return calculate_normalized_weights(weights)
+
+def calculate_normalized_weights(weights):
     epsilon = 1e-8
     min = torch.min(weights)
     max = torch.max(weights)
     return (weights - min) / (max - min + epsilon)
 
-def displayTopFeatures(model, feature_cols, print_function=print, display_function=display):
-    feature_weights = get_feature_weights_as_numpy(model)
-    normalized_feature_weights = find_normalized_weights(model)
+def displayTopFeatures(model, feature_cols, print_function=print, display_function=display, feature_weights=None):
+    if feature_weights is None:
+        feature_weights = get_feature_weights_as_numpy(model)
+        normalized_feature_weights = find_normalized_weights(model)
+    else:
+        normalized_feature_weights = calculate_normalized_weights(feature_weights)
 
     weights_df = pd.DataFrame({
         'feature': feature_cols,
@@ -69,8 +125,9 @@ def displayTopFeatures(model, feature_cols, print_function=print, display_functi
     #top_features.set_option('display.float_format', lambda x: '%.3f' % x)
     display_function(top_features)
 
-def persist_wtsne_input(model, feature_cols, name, logger):
-    feature_weights = get_feature_weights_as_numpy(model)
+def persist_wtsne_input(model, feature_cols, name, logger, feature_weights=None):
+    if feature_weights is None:
+        feature_weights = get_feature_weights_as_numpy(model)
 
     weights_df = pd.DataFrame({
         'feature': feature_cols,
@@ -102,6 +159,10 @@ def generate_execution_id(name, base_path="results", external_id="", index=None,
         os.makedirs(execution_dir, exist_ok=True)
     return execution_id
 
+def calculate_aggregated_feature_importance(captum_attr):
+    attr_sum = captum_attr.detach().numpy().sum(0)
+    return attr_sum / np.linalg.norm(attr_sum, ord=1)
+    
 class LogPrinter:
     def __init__(self, name, execution_id, base_path="results", persist=True, father=None):
         self.dir_path = father.dir_path if father is not None else f"{base_path}/{name}"
