@@ -168,6 +168,18 @@ def calculate_aggregated_feature_importance(captum_attr):
     attr_sum = captum_attr.sum(0)
     norm = torch.norm(attr_sum, p=1)
     return attr_sum / norm
+
+def get_weight_per_class_from_shap(shap_values):
+    n_labels = len(shap_values[0])
+    transpose = []
+    for i in range(0, n_labels):
+        transpose.append([])
+    for feature_per_class in shap_values:
+        for i in range(0, n_labels):
+            transpose[i].append(feature_per_class[i])
+    for i in range(0, n_labels):
+        transpose[i] = np.array(transpose[i], dtype=np.float64)
+    return transpose
     
 class LogPrinter:
     def __init__(self, name, execution_id, base_path="results", persist=True, father=None):

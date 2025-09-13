@@ -1,5 +1,6 @@
 import time
 import numpy as np
+import shap
 import torch
 import pandas as pd
 from itertools import combinations
@@ -8,7 +9,7 @@ from sklearn.model_selection import StratifiedKFold, train_test_split
 from feature_position_walk import generate_feature_position_walk_plot
 from trainingConfigs.execution_store import ExecutionStore
 from trainingTestStep import trainingModule
-from utils import LogPrinter, calculate_kruskal_dunn_3, calculate_kruskal_dunn_5, calculate_normalized_weights, generate_execution_id, displayTopFeatures, find_normalized_weights, get_feature_rankings, get_feature_weights_as_numpy, persist_wtsne_input, calculate_aggregated_feature_importance
+from utils import LogPrinter, calculate_kruskal_dunn_3, calculate_kruskal_dunn_5, calculate_normalized_weights, generate_execution_id, displayTopFeatures, find_normalized_weights, get_feature_rankings, get_feature_weights_as_numpy, get_weight_per_class_from_shap, persist_wtsne_input, calculate_aggregated_feature_importance
 from data.loadDataset import folds_to_dataloaders, numpy_to_dataloaders
 from metrics import Selection_Accuracy, jaccard_similarity, pearson_correlation, silhouetteMetric, spearman_correlation
 from wtsne import WTSNEv2
@@ -20,7 +21,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def multiple_training(name, base_model, model_with_fsl, dataset_path, label_column, has_numeric_labels=True, ignored_columns=[], num_of_tests=3, test_percentage=0.1, seed=None, batch_size=32, n_epochs_base=50, n_epochs_fsl=50, 
-                      n_epochs_fsl_posthoc=50, learning_rate=0.01, should_persist=True, num_of_informative_features_to_display=10, jaccard_k_list=None, l=0.001, scaler=StandardScaler):
+                      n_epochs_fsl_posthoc=50, learning_rate=0.01, should_persist=True, num_of_informative_features_to_display=10, jaccard_k_list=None, l=0.001, scaler=StandardScaler, shap_k=500, shap_representative_k=500, general_weights_from_absolute_values=True):
     general_start_time = time.perf_counter()
 
     # Models
@@ -172,13 +173,18 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         gradient_shap_attributes = gs.attribute(X_test_tensor, X_fold_train_tensor)
         feature_ablation_attributes = fa.attribute(X_test_tensor)
 
-        integrated_gradients_feature_weights = calculate_aggregated_feature_importance(integrated_gradients_attributes)
-        noise_tunnel_feature_weights = calculate_aggregated_feature_importance(noise_tunnel_attributes)
-        deep_lift_feature_weights = calculate_aggregated_feature_importance(deep_lift_attributes)
-        gradient_shap_feature_weights = calculate_aggregated_feature_importance(gradient_shap_attributes)
-        feature_ablation_feature_weights = calculate_aggregated_feature_importance(feature_ablation_attributes)
-
-        # Display top features
+        if general_weights_from_absolute_values:
+            integrated_gradients_feature_weights = torch.mean(torch.abs(integrated_gradients_attributes), dim=0)
+            noise_tunnel_feature_weights = torch.mean(torch.abs(noise_tunnel_attributes), dim=0)
+            deep_lift_feature_weights = torch.mean(torch.abs(deep_lift_attributes), dim=0)
+            gradient_shap_feature_weights = torch.mean(torch.abs(gradient_shap_attributes), dim=0)
+            feature_ablation_feature_weights = torch.mean(torch.abs(feature_ablation_attributes), dim=0)
+        else:
+            integrated_gradients_feature_weights = calculate_aggregated_feature_importance(integrated_gradients_attributes)
+            noise_tunnel_feature_weights = calculate_aggregated_feature_importance(noise_tunnel_attributes)
+            deep_lift_feature_weights = calculate_aggregated_feature_importance(deep_lift_attributes)
+            gradient_shap_feature_weights = calculate_aggregated_feature_importance(gradient_shap_attributes)
+            feature_ablation_feature_weights = calculate_aggregated_feature_importance(feature_ablation_attributes)
 
         displayTopFeatures(None, feature_columns, feature_weights=integrated_gradients_feature_weights, print_function=fold_logger.log_text, display_function=lambda df: fold_logger.log_dataframe(df, filename="top-features-integrated-gradients.txt"))
         displayTopFeatures(None, feature_columns, feature_weights=noise_tunnel_feature_weights, print_function=fold_logger.log_text, display_function=lambda df: fold_logger.log_dataframe(df, filename="top-features-noise-tunnel.txt"))
