@@ -14,8 +14,9 @@ from metrics import Selection_Accuracy, jaccard_similarity, pearson_correlation,
 from wtsne import WTSNEv2
 from evaluation import calculate_prediction_metrics
 from featureSelectionLayer import freezeParams, transfer_weights
-from captum.attr import LayerConductance, LayerActivation, LayerIntegratedGradients
 from captum.attr import IntegratedGradients, DeepLift, GradientShap, NoiseTunnel, FeatureAblation
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
 
 
 def multiple_training(name, base_model, model_with_fsl, dataset_path, label_column, has_numeric_labels=True, ignored_columns=[], num_of_tests=3, test_percentage=0.1, seed=None, batch_size=32, n_epochs_base=50, n_epochs_fsl=50, 
@@ -83,6 +84,7 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
     logger.log_text("Creating test dataloader...")
 
     X_test = pd.DataFrame(scaler().fit_transform(X_test), columns=X.columns) # StandardScaler
+    X_test_tensor = torch.from_numpy(X_test.to_numpy()).type(torch.float32).to(device)
 
     test_dataloader = numpy_to_dataloaders(X_test, y_test, batch_size=batch_size)
 
@@ -92,6 +94,8 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
     skf = StratifiedKFold(n_splits=num_of_tests, shuffle=True, random_state=seed)
     folds = list(skf.split(X_train, y_train))
     logger.log_text(f"Number of folds created: {len(folds)}.")
+    for i, (train_idx, val_idx) in enumerate(folds):
+        logger.log_text(f"Fold {i + 1}: {len(train_idx)} training samples, {len(val_idx)} validation samples.")
 
     # Create store to persist fold results
 
@@ -120,6 +124,8 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         y_fold_train, y_fold_val = y_train.iloc[train_index], y_train.iloc[val_index]
         X_fold_train = pd.DataFrame(scaler().fit_transform(X_fold_train), columns=X.columns)
         X_fold_val = pd.DataFrame(scaler().fit_transform(X_fold_val), columns=X.columns)
+        X_fold_train_tensor = torch.from_numpy(X_fold_train.to_numpy()).type(torch.float32).to(device)
+        X_fold_val_tensor = torch.from_numpy(X_fold_val.to_numpy()).type(torch.float32).to(device)
         train_dataloader, val_dataloader = folds_to_dataloaders(X_fold_train, y_fold_train, X_fold_val, y_fold_val, batch_size=batch_size)
         fold_logger.log_text(f"Fold {fold_index + 1} - Train samples: {X_fold_train.shape[0]}.")
         fold_logger.log_text(f"Fold {fold_index + 1} - Validation samples: {X_fold_val.shape[0]}.")
@@ -160,11 +166,11 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         gs = GradientShap(model_without_fsl)
         fa = FeatureAblation(model_without_fsl)
 
-        integrated_gradients_attributes = ig.attribute(X_test, n_steps=50)
-        noise_tunnel_attributes = ig_nt.attribute(X_test)
-        deep_lift_attributes = dl.attribute(X_test)
-        gradient_shap_attributes = gs.attribute(X_test, X_fold_train)
-        feature_ablation_attributes = fa.attribute(X_test)
+        integrated_gradients_attributes = ig.attribute(X_test_tensor, n_steps=50)
+        noise_tunnel_attributes = ig_nt.attribute(X_test_tensor)
+        deep_lift_attributes = dl.attribute(X_test_tensor)
+        gradient_shap_attributes = gs.attribute(X_test_tensor, X_fold_train_tensor)
+        feature_ablation_attributes = fa.attribute(X_test_tensor)
 
         integrated_gradients_feature_weights = calculate_aggregated_feature_importance(integrated_gradients_attributes)
         noise_tunnel_feature_weights = calculate_aggregated_feature_importance(noise_tunnel_attributes)
@@ -196,11 +202,16 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
 
         # Save feature weights 
 
-        store.feature_weights_integrated_gradients(integrated_gradients_feature_weights)
-        store.feature_weights_noise_tunnel(noise_tunnel_feature_weights)
-        store.feature_weights_deep_lift(deep_lift_feature_weights)
-        store.feature_weights_gradient_shap(gradient_shap_feature_weights)
-        store.feature_weights_feature_ablation(feature_ablation_feature_weights)
+        integrated_gradients_feature_weights_np = integrated_gradients_feature_weights.squeeze().detach().cpu().numpy()
+        noise_tunnel_feature_weights_np = noise_tunnel_feature_weights.squeeze().detach().cpu().numpy()
+        deep_lift_feature_weights_np = deep_lift_feature_weights.squeeze().detach().cpu().numpy()
+        gradient_shap_feature_weights_np = gradient_shap_feature_weights.squeeze().detach().cpu().numpy()
+        feature_ablation_feature_weights_np = feature_ablation_feature_weights.squeeze().detach().cpu().numpy()
+        store.feature_weights_integrated_gradients.append(integrated_gradients_feature_weights_np)
+        store.feature_weights_noise_tunnel.append(noise_tunnel_feature_weights_np)
+        store.feature_weights_deep_lift.append(deep_lift_feature_weights_np)
+        store.feature_weights_gradient_shap.append(gradient_shap_feature_weights_np)
+        store.feature_weights_feature_ablation.append(feature_ablation_feature_weights_np)
 
         weights_with_fsl = get_feature_weights_as_numpy(model_with_fsl)
         store.feature_weights_fsl.append(weights_with_fsl)
@@ -211,11 +222,11 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
 
         fold_logger.log_text("Persisting feature weights...")
 
-        fold_logger.log_np_array(integrated_gradients_feature_weights, filename=f"integrated_gradients_feature_weights.txt", fmt='%f')
-        fold_logger.log_np_array(noise_tunnel_feature_weights, filename=f"noise_tunnel_feature_weights.txt", fmt='%f')
-        fold_logger.log_np_array(deep_lift_feature_weights, filename=f"deep_lift_feature_weights.txt", fmt='%f')
-        fold_logger.log_np_array(gradient_shap_feature_weights, filename=f"gradient_shap_feature_weights.txt", fmt='%f')
-        fold_logger.log_np_array(feature_ablation_feature_weights, filename=f"feature_ablation_feature_weights.txt", fmt='%f')
+        fold_logger.log_np_array(integrated_gradients_feature_weights_np, filename=f"integrated_gradients_feature_weights.txt", fmt='%f')
+        fold_logger.log_np_array(noise_tunnel_feature_weights_np, filename=f"noise_tunnel_feature_weights.txt", fmt='%f')
+        fold_logger.log_np_array(deep_lift_feature_weights_np, filename=f"deep_lift_feature_weights.txt", fmt='%f')
+        fold_logger.log_np_array(gradient_shap_feature_weights_np, filename=f"gradient_shap_feature_weights.txt", fmt='%f')
+        fold_logger.log_np_array(feature_ablation_feature_weights_np, filename=f"feature_ablation_feature_weights.txt", fmt='%f')
 
         fold_logger.log_np_array(weights_with_fsl, filename=f"fsl_feature_weights.txt", fmt='%f')
         fold_logger.log_np_array(weights_with_fsl_posthoc, filename=f"fsl_posthoc_feature_weights.txt", fmt='%f')

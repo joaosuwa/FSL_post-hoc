@@ -41,14 +41,16 @@ def calculate_kruskal_dunn_5(without_fsl_results, with_integrated_gradients_resu
     if p_value < p_value_threshold:
         result += "Significant difference detected (p < 0.01). "
         data = without_fsl_results + with_fsl_results + with_posthoc_fsl_results
-        groups = ['without_weights'] * len(without_fsl_results)  
-        + ['with_integrated_gradients_results'] * len(with_integrated_gradients_results) 
-        + ['with_noise_tunnel_results'] * len(with_noise_tunnel_results) 
-        + ['with_deep_lift_results'] * len(with_deep_lift_results) 
-        + ['with_gradient_shap_results'] * len(with_gradient_shap_results) 
-        + ['with_feature_ablation_results'] * len(with_feature_ablation_results) 
-        + ['with_fsl'] * len(with_fsl_results)
-        + ['with_posthoc_fsl'] * len(with_posthoc_fsl_results)
+        groups = (
+            ['without_weights'] * len(without_fsl_results)  
+            + ['with_integrated_gradients_results'] * len(with_integrated_gradients_results) 
+            + ['with_noise_tunnel_results'] * len(with_noise_tunnel_results) 
+            + ['with_deep_lift_results'] * len(with_deep_lift_results) 
+            + ['with_gradient_shap_results'] * len(with_gradient_shap_results) 
+            + ['with_feature_ablation_results'] * len(with_feature_ablation_results) 
+            + ['with_fsl'] * len(with_fsl_results)
+            + ['with_posthoc_fsl'] * len(with_posthoc_fsl_results)
+        )
         df = pd.DataFrame({'value': data, 'group': groups})
         # Dunn’s test with Bonferroni correction
         dunn_results = posthoc_dunn(df, val_col='value', group_col='group', p_adjust='bonferroni')
@@ -80,9 +82,12 @@ def calculate_kruskal_dunn_2(tabnet_results, with_fsl_results, p_value_threshold
 
 def get_feature_rankings(model, feature_columns, weights=None):
     if weights is None:
-        weights = get_feature_weights_as_numpy(model)
-    ordered_indices = weights.argsort()[::-1]
+        weights = get_feature_weights_as_tensor(model)
+    ordered_indices = weights.squeeze().detach().cpu().numpy().argsort()[::-1]
     return [feature_columns[i] for i in ordered_indices]
+
+def get_feature_weights_as_tensor(model):
+    return model.block_1[0].get_weights()
 
 def get_feature_weights_as_numpy(model):
     weights = model.block_1[0].get_weights()
@@ -100,14 +105,14 @@ def calculate_normalized_weights(weights):
 
 def displayTopFeatures(model, feature_cols, print_function=print, display_function=display, feature_weights=None):
     if feature_weights is None:
-        feature_weights = get_feature_weights_as_numpy(model)
+        feature_weights = get_feature_weights_as_tensor(model)
         normalized_feature_weights = find_normalized_weights(model)
     else:
         normalized_feature_weights = calculate_normalized_weights(feature_weights)
 
     weights_df = pd.DataFrame({
         'feature': feature_cols,
-        'weight': feature_weights,
+        'weight': feature_weights.squeeze().detach().cpu().numpy(),
         'normalized_weight': normalized_feature_weights.squeeze().detach().cpu().numpy()
     })
 
@@ -127,11 +132,11 @@ def displayTopFeatures(model, feature_cols, print_function=print, display_functi
 
 def persist_wtsne_input(model, feature_cols, name, logger, feature_weights=None):
     if feature_weights is None:
-        feature_weights = get_feature_weights_as_numpy(model)
+        feature_weights = get_feature_weights_as_tensor(model)
 
     weights_df = pd.DataFrame({
         'feature': feature_cols,
-        'value': feature_weights
+        'value': feature_weights.squeeze().detach().cpu().numpy()
     })
 
     weights_df.to_csv(os.path.join(logger.dir_path, f"{name}-wtsne-input.csv"), index=False, encoding='utf-8', float_format="%.10f")
@@ -160,8 +165,9 @@ def generate_execution_id(name, base_path="results", external_id="", index=None,
     return execution_id
 
 def calculate_aggregated_feature_importance(captum_attr):
-    attr_sum = captum_attr.detach().numpy().sum(0)
-    return attr_sum / np.linalg.norm(attr_sum, ord=1)
+    attr_sum = captum_attr.sum(0)
+    norm = torch.norm(attr_sum, p=1)
+    return attr_sum / norm
     
 class LogPrinter:
     def __init__(self, name, execution_id, base_path="results", persist=True, father=None):
@@ -186,4 +192,3 @@ class LogPrinter:
         display(np_array)
         if self.persist:
             np.savetxt(os.path.join(self.dir_path, filename), np_array, fmt=fmt)
-            

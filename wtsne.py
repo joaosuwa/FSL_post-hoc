@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn import metrics
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
-from utils import get_feature_weights_as_numpy, min_max_normalized_weights
+from utils import get_feature_weights_as_numpy, get_feature_weights_as_tensor, min_max_normalized_weights
 import numpy as np
 import matplotlib.pyplot as plt
 from openTSNE import TSNE as open_TSNE
@@ -52,7 +52,10 @@ def WTSNEv2(logger, X, y, model=None, weights=None, name=None, f_scaler=Standard
     X = f_scaler().fit_transform(X)
 
     if model is not None:
-        weights = get_feature_weights_as_numpy(model).reshape(-1, 1)
+        weights = get_feature_weights_as_tensor(model)
+
+    if weights is not None:
+        weights = weights.detach().cpu().numpy().reshape(-1, 1)
 
     if weights is not None:
         title = f"Weighted feature vectors"
