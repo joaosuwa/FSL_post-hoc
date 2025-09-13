@@ -40,7 +40,7 @@ def calculate_kruskal_dunn_5(without_fsl_results, with_integrated_gradients_resu
             raise
     if p_value < p_value_threshold:
         result += "Significant difference detected (p < 0.01). "
-        data = without_fsl_results + with_fsl_results + with_posthoc_fsl_results
+        data = without_fsl_results + with_integrated_gradients_results + with_noise_tunnel_results + with_deep_lift_results + with_gradient_shap_results + with_feature_ablation_results + with_fsl_results + with_posthoc_fsl_results
         groups = (
             ['without_weights'] * len(without_fsl_results)  
             + ['with_integrated_gradients_results'] * len(with_integrated_gradients_results) 

@@ -8,7 +8,7 @@ def xor_multiple_training():
         model_with_fsl=XorModelWithFSL,
         dataset_path='data/xor/xor_500samples_50features.csv',
         label_column='class',
-        num_of_tests=3,
+        num_of_tests=11,
         test_percentage=0.15,
         seed=None,
         learning_rate=0.01,

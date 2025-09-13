@@ -504,7 +504,7 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         messages.append("Silhouette without FSL: " + str(store.silhouette_without_weights) + "\n statistics: " + str(stat_silhouette_without_weights) + "\n")
         messages.append("Silhouette with Integrated Gradients: " + str(store.silhouette_with_integrated_gradients) + "\n statistics: " + str(stat_silhouette_integrated_gradients) + "\n")
         messages.append("Silhouette with Noise Tunnel: " + str(store.silhouette_with_noise_tunnel) + "\n statistics: " + str(stat_silhouette_noise_tunnel) + "\n")
-        messages.append("Silhouette with Deep Lift: " + str(store.silhouette_with_noise_tunnel) + "\n statistics: " + str(stat_silhouette_noise_tunnel) + "\n")
+        messages.append("Silhouette with Deep Lift: " + str(store.silhouette_with_deep_lift) + "\n statistics: " + str(stat_silhouette_deep_lift) + "\n")
         messages.append("Silhouette with Gradient SHAP: " + str(store.silhouette_with_gradient_shap) + "\n statistics: " + str(stat_silhouette_gradient_shap) + "\n")
         messages.append("Silhouette with Feature Ablation: " + str(store.silhouette_with_feature_ablation) + "\n statistics: " + str(stat_silhouette_feature_ablation) + "\n")
         messages.append("Silhouette with FSL: " + str(store.silhouette_with_fsl) + "\n statistics: " + str(stat_silhouette_with_fsl) + "\n")
