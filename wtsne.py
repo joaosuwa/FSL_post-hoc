@@ -63,21 +63,15 @@ def WTSNEv2(logger, X, y, model=None, weights=None, name=None, f_scaler=Standard
         W = np.tile(W,(1, X.shape[0])).transpose()
         X = np.multiply(W,X)
 
-    tsne = open_TSNE(
+    tsne = TSNE(
         n_components=n_components,
         perplexity=perplexity,
-        initialization='pca',
-        metric='euclidean',
-        neighbors='auto',
-        learning_rate='auto',
-        negative_gradient_method='fft',
-        verbose=True,
-        n_jobs=-1,
-        n_iter=500,
         random_state=42,
+        n_iter=500,
+        verbose=1
     )
 
-    embedding = tsne.fit(X)
+    embedding = tsne.fit_transform(X)
 
     embedding_silhouette = metrics.silhouette_score(embedding, y, metric='euclidean')
 
