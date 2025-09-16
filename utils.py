@@ -87,10 +87,10 @@ def get_feature_rankings(model, feature_columns, weights=None):
     return [feature_columns[i] for i in ordered_indices]
 
 def get_feature_weights_as_tensor(model):
-    return model.block_1[0].get_weights()
+    return model.block_1[0].get_activated_weights()
 
 def get_feature_weights_as_numpy(model):
-    weights = model.block_1[0].get_weights()
+    weights = model.block_1[0].get_activated_weights()
     return weights.squeeze().detach().cpu().numpy()
 
 def find_normalized_weights(model):
@@ -133,6 +133,8 @@ def displayTopFeatures(model, feature_cols, print_function=print, display_functi
 def persist_wtsne_input(model, feature_cols, name, logger, feature_weights=None):
     if feature_weights is None:
         feature_weights = get_feature_weights_as_tensor(model)
+
+    feature_weights = calculate_normalized_weights(feature_weights)
 
     weights_df = pd.DataFrame({
         'feature': feature_cols,
