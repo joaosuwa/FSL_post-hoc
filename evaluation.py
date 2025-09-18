@@ -6,7 +6,7 @@ from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_sc
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-def calculate_prediction_metrics(logger, model, test_dataloader, print_function=print, name=None):
+def calculate_prediction_metrics(logger, model, test_dataloader, print_function=print, name=None, is_multiclass=False):
     y_true = []
     y_pred = []
     model.eval()
@@ -14,8 +14,11 @@ def calculate_prediction_metrics(logger, model, test_dataloader, print_function=
         for X_batch, y_batch in test_dataloader:
             X_batch, y_batch = X_batch.to(device), y_batch.to(device)
             y_pred_logits = model(X_batch)
-            y_pred_prob = torch.sigmoid(y_pred_logits) 
-            y_pred_label = torch.round(y_pred_prob) 
+            if is_multiclass:
+                y_pred_label = torch.argmax(y_pred_logits, dim=1)  
+            else:
+                y_pred_prob = torch.sigmoid(y_pred_logits) 
+                y_pred_label = torch.round(y_pred_prob) 
             y_true.extend(y_batch.cpu().numpy())
             y_pred.extend(y_pred_label.cpu().numpy())
 

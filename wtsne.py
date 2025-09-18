@@ -46,7 +46,7 @@ def WTSNE(dataset, datasetName: str, model=None):
 
     return X_tsne, y
 
-def WTSNEv2(logger, X, y, model=None, weights=None, name=None, f_scaler=StandardScaler, n_components=2, perplexity=30):
+def WTSNEv2(logger, X, y, model=None, weights=None, name=None, f_scaler=StandardScaler, n_components=2, perplexity=30, seed=None, weight_scaler=StandardScaler):
     title = f"t-SNE visualization without weighing"
     X = X.copy()
     X = f_scaler().fit_transform(X)
@@ -55,20 +55,20 @@ def WTSNEv2(logger, X, y, model=None, weights=None, name=None, f_scaler=Standard
         weights = get_feature_weights_as_tensor(model)
 
     if weights is not None:
-        weights = weights.detach().cpu().numpy().reshape(-1, 1)
+        weights = weights.squeeze().detach().cpu().numpy().reshape(-1, 1)
 
     if weights is not None:
         title = f"Weighted feature vectors"
-        W = f_scaler().fit_transform(weights)
+        W = weight_scaler().fit_transform(weights)
         W = np.tile(W,(1, X.shape[0])).transpose()
         X = np.multiply(W,X)
 
     tsne = TSNE(
         n_components=n_components,
         perplexity=perplexity,
-        random_state=42,
-        n_iter=500,
-        verbose=1
+        max_iter=500,
+        verbose=1,
+        random_state=seed
     )
 
     embedding = tsne.fit_transform(X)

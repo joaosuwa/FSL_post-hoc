@@ -1,11 +1,14 @@
 import os
 import uuid
+from sklearn.preprocessing import MinMaxScaler
+import torch
 import pandas as pd
 import numpy as np
 from IPython.display import display
 from scipy.stats import kruskal
 from scikit_posthocs import posthoc_dunn
-import torch
+from sklearn.discriminant_analysis import StandardScaler
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def calculate_kruskal_dunn_3(without_fsl_results, with_fsl_results, with_posthoc_fsl_results, p_value_threshold=0.01):
@@ -90,11 +93,11 @@ def get_feature_weights_as_tensor(model):
     return model.block_1[0].get_activated_weights()
 
 def get_feature_weights_as_numpy(model):
-    weights = model.block_1[0].get_activated_weights()
+    weights = get_feature_weights_as_tensor(model)
     return weights.squeeze().detach().cpu().numpy()
 
 def find_normalized_weights(model):
-    weights = model.block_1[0].get_activated_weights()
+    weights = get_feature_weights_as_tensor(model)
     return calculate_normalized_weights(weights)
 
 def calculate_normalized_weights(weights):

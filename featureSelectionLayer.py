@@ -58,7 +58,7 @@ def transfer_weights(model_v1, model_v2):
 
     new_state_dict_v2 = OrderedDict()
 
-    for i, (key_v2, param_v2) in enumerate(state_dict_v2.items()):
+    for _, (key_v2, param_v2) in enumerate(state_dict_v2.items()):
         # Pular parâmetros da FeatureSelectionV2 (primeiro layer do V2)
         if key_v2.startswith("block_1.0."):
             new_state_dict_v2[key_v2] = param_v2  # mantém como está (FeatureSelection)
@@ -73,11 +73,11 @@ def transfer_weights(model_v1, model_v2):
         if key_v1 in state_dict_v1:
             new_state_dict_v2[key_v2] = state_dict_v1[key_v1]
         else:
-            print(f"Aviso: {key_v1} não encontrado em V1. Mantendo valor atual.")
-            new_state_dict_v2[key_v2] = param_v2  # fallback
+            raise ValueError(f"Erro na transferência: {key_v1} não encontrado em V1. Mantendo valor atual.")
 
     # Carregar os pesos modificados no modelo V2
     model_v2.load_state_dict(new_state_dict_v2)
+    model_v2.to(device)
 
 def freezeParams(model):
     # Congelar todas as camadas exceto FeatureSelectionV2
@@ -90,3 +90,17 @@ def freezeParams(model):
     for name, param in model.named_parameters():
         print(name, param.requires_grad)
 
+def compare_model_weights(model1, model2, logger):
+    state_dict1 = model1.state_dict()
+    state_dict2 = model2.state_dict()
+
+    for key_v2, _ in state_dict2.items():
+        if key_v2.startswith("block_1.0."):
+            continue
+
+        key_index = int(key_v2.split('.')[1])
+        key_v1_index = key_index - 1
+        key_v1 = key_v2.replace(f"block_1.{key_index}.", f"block_1.{key_v1_index}.")
+
+        weights_equal = torch.equal(state_dict1[key_v1], state_dict2[key_v2])
+        logger.log_text(f"Layer '{key_v1}' and '{key_v2}': {'✅ Same' if weights_equal else '❌ Different'}")

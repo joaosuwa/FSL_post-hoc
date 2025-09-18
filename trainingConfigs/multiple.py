@@ -14,14 +14,15 @@ from data.loadDataset import folds_to_dataloaders, numpy_to_dataloaders
 from metrics import Selection_Accuracy, jaccard_similarity, pearson_correlation, silhouetteMetric, spearman_correlation
 from wtsne import WTSNEv2
 from evaluation import calculate_prediction_metrics
-from featureSelectionLayer import freezeParams, transfer_weights
+from featureSelectionLayer import compare_model_weights, freezeParams, transfer_weights
 from captum.attr import IntegratedGradients, DeepLift, GradientShap, NoiseTunnel, FeatureAblation
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 
 def multiple_training(name, base_model, model_with_fsl, dataset_path, label_column, has_numeric_labels=True, ignored_columns=[], num_of_tests=3, test_percentage=0.1, seed=None, batch_size=32, n_epochs_base=50, n_epochs_fsl=50, 
-                      n_epochs_fsl_posthoc=50, learning_rate=0.01, should_persist=True, num_of_informative_features_to_display=10, jaccard_k_list=None, l=0.001, scaler=StandardScaler, shap_k=500, shap_representative_k=500, general_weights_from_absolute_values=True):
+                      n_epochs_fsl_posthoc=50, learning_rate=0.01, should_persist=True, num_of_informative_features_to_display=10, jaccard_k_list=None, l=0.001, scaler=StandardScaler, weight_scaler=StandardScaler,general_weights_from_absolute_values=True, 
+                      is_multiclass=False, num_classes=2):
     general_start_time = time.perf_counter()
 
     # Models
@@ -84,7 +85,7 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
 
     logger.log_text("Creating test dataloader...")
 
-    X_test = pd.DataFrame(scaler().fit_transform(X_test), columns=X.columns) # StandardScaler
+    X_test = pd.DataFrame(scaler().fit_transform(X_test) if scaler is not None else X_test, columns=X.columns)
     X_test_tensor = torch.from_numpy(X_test.to_numpy()).type(torch.float32).to(device)
 
     test_dataloader = numpy_to_dataloaders(X_test, y_test, batch_size=batch_size)
@@ -123,8 +124,8 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         fold_logger.log_text("Preparing fold dataloaders...")
         X_fold_train, X_fold_val = X_train.iloc[train_index], X_train.iloc[val_index]
         y_fold_train, y_fold_val = y_train.iloc[train_index], y_train.iloc[val_index]
-        X_fold_train = pd.DataFrame(scaler().fit_transform(X_fold_train), columns=X.columns)
-        X_fold_val = pd.DataFrame(scaler().fit_transform(X_fold_val), columns=X.columns)
+        X_fold_train = pd.DataFrame(scaler().fit_transform(X_fold_train) if scaler is not None else X_fold_train, columns=X.columns)
+        X_fold_val = pd.DataFrame(scaler().fit_transform(X_fold_val) if scaler is not None else X_fold_val, columns=X.columns)
         X_fold_train_tensor = torch.from_numpy(X_fold_train.to_numpy()).type(torch.float32).to(device)
         X_fold_val_tensor = torch.from_numpy(X_fold_val.to_numpy()).type(torch.float32).to(device)
         train_dataloader, val_dataloader = folds_to_dataloaders(X_fold_train, y_fold_train, X_fold_val, y_fold_val, batch_size=batch_size)
@@ -136,7 +137,7 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         fold_logger.log_text("Training model without FSL.")
         model_without_fsl = Model()
         start_time = time.perf_counter()
-        model_without_fsl = trainingModule(model_without_fsl, train_dataloader, val_dataloader, n_epochs=n_epochs_base, 
+        model_without_fsl = trainingModule(model_without_fsl, train_dataloader, val_dataloader, n_epochs=n_epochs_base, is_multiclass=is_multiclass,
                                          earlyStop=False, isFSLpresent=False, seed=seed, print_function=fold_logger.log_text, lr=learning_rate, l=l)
         elapsed = time.perf_counter() - start_time
         store.training_time_without_weights.append(elapsed)
@@ -144,7 +145,7 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         fold_logger.log_text("Training model with FSL.")
         model_with_fsl = ModelWithFSL(name="Model with FSL")
         start_time = time.perf_counter()
-        model_with_fsl = trainingModule(model_with_fsl, train_dataloader, val_dataloader, n_epochs=n_epochs_fsl, 
+        model_with_fsl = trainingModule(model_with_fsl, train_dataloader, val_dataloader, n_epochs=n_epochs_fsl, is_multiclass=is_multiclass,
                                         earlyStop=False, isFSLpresent=True, seed=seed, print_function=fold_logger.log_text, lr=learning_rate, l=l)
         elapsed = time.perf_counter() - start_time
         store.training_time_with_fsl.append(elapsed)
@@ -153,25 +154,47 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         model_with_fsl_posthoc = ModelWithFSL(name="Model with Post-hoc FSL")
         transfer_weights(model_without_fsl, model_with_fsl_posthoc)
         freezeParams(model_with_fsl_posthoc)
+        compare_model_weights(model_without_fsl, model_with_fsl_posthoc, logger)
         start_time = time.perf_counter()
-        model_with_fsl_posthoc = trainingModule(model_with_fsl_posthoc, train_dataloader, val_dataloader, n_epochs=n_epochs_fsl_posthoc, 
+        model_with_fsl_posthoc = trainingModule(model_with_fsl_posthoc, train_dataloader, val_dataloader, n_epochs=n_epochs_fsl_posthoc, is_multiclass=is_multiclass,
                                                 earlyStop=False, isFSLpresent=True, seed=seed, print_function=fold_logger.log_text, lr=learning_rate, l=l)
         elapsed = time.perf_counter() - start_time
         store.training_time_with_fsl_posthoc.append(elapsed)
+        compare_model_weights(model_without_fsl, model_with_fsl_posthoc, logger)
 
         # Apply others posthoc methods
-        '''
+        
         ig = IntegratedGradients(model_without_fsl)
         ig_nt = NoiseTunnel(ig)
         dl = DeepLift(model_without_fsl)
         gs = GradientShap(model_without_fsl)
         fa = FeatureAblation(model_without_fsl)
 
-        integrated_gradients_attributes = ig.attribute(X_test_tensor, n_steps=50)
-        noise_tunnel_attributes = ig_nt.attribute(X_test_tensor)
-        deep_lift_attributes = dl.attribute(X_test_tensor)
-        gradient_shap_attributes = gs.attribute(X_test_tensor, X_fold_train_tensor)
-        feature_ablation_attributes = fa.attribute(X_test_tensor)
+        if is_multiclass:
+            integrated_gradients_attributes = ig.attribute(X_test_tensor, n_steps=50, target=0)
+            noise_tunnel_attributes = ig_nt.attribute(X_test_tensor, target=0)
+            deep_lift_attributes = dl.attribute(X_test_tensor, target=0)
+            gradient_shap_attributes = gs.attribute(X_test_tensor, X_fold_train_tensor, target=0)
+            feature_ablation_attributes = fa.attribute(X_test_tensor, target=0)
+            for i in range(1, num_classes):
+                if general_weights_from_absolute_values:
+                    integrated_gradients_attributes += torch.abs(ig.attribute(X_test_tensor, n_steps=50, target=i))
+                    noise_tunnel_attributes += torch.abs(ig_nt.attribute(X_test_tensor, target=i))
+                    deep_lift_attributes += torch.abs(dl.attribute(X_test_tensor, target=i))
+                    gradient_shap_attributes += torch.abs(gs.attribute(X_test_tensor, X_fold_train_tensor, target=i))
+                    feature_ablation_attributes += torch.abs(fa.attribute(X_test_tensor, target=i))
+                else:
+                    integrated_gradients_attributes += ig.attribute(X_test_tensor, n_steps=50, target=i)
+                    noise_tunnel_attributes += ig_nt.attribute(X_test_tensor, target=i)
+                    deep_lift_attributes += dl.attribute(X_test_tensor, target=i)
+                    gradient_shap_attributes += gs.attribute(X_test_tensor, X_fold_train_tensor, target=i)
+                    feature_ablation_attributes += fa.attribute(X_test_tensor, target=i)
+        else:
+            integrated_gradients_attributes = ig.attribute(X_test_tensor, n_steps=50)
+            noise_tunnel_attributes = ig_nt.attribute(X_test_tensor)
+            deep_lift_attributes = dl.attribute(X_test_tensor)
+            gradient_shap_attributes = gs.attribute(X_test_tensor, X_fold_train_tensor)
+            feature_ablation_attributes = fa.attribute(X_test_tensor)
 
         if general_weights_from_absolute_values:
             integrated_gradients_feature_weights = torch.mean(torch.abs(integrated_gradients_attributes), dim=0)
@@ -191,23 +214,23 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         displayTopFeatures(None, feature_columns, feature_weights=deep_lift_feature_weights, print_function=fold_logger.log_text, display_function=lambda df: fold_logger.log_dataframe(df, filename="top-features-deep-lift.txt"))
         displayTopFeatures(None, feature_columns, feature_weights=gradient_shap_feature_weights, print_function=fold_logger.log_text, display_function=lambda df: fold_logger.log_dataframe(df, filename="top-features-gradient-shap.txt"))
         displayTopFeatures(None, feature_columns, feature_weights=feature_ablation_feature_weights, print_function=fold_logger.log_text, display_function=lambda df: fold_logger.log_dataframe(df, filename="top-features-feature-ablation.txt"))
-        '''
+        
         displayTopFeatures(model_with_fsl, feature_columns, print_function=fold_logger.log_text, display_function=lambda df: fold_logger.log_dataframe(df, filename="top-features-fsl.txt"))
         displayTopFeatures(model_with_fsl_posthoc, feature_columns, print_function=fold_logger.log_text, display_function=lambda df: fold_logger.log_dataframe(df, filename="top-features-posthoc-fsl.txt"))
 
         # Persist weights as original wtsne input
-        '''
+        
         persist_wtsne_input(None, feature_columns, feature_weights=integrated_gradients_feature_weights, name="integrated-gradients", logger=fold_logger)
         persist_wtsne_input(None, feature_columns, feature_weights=noise_tunnel_feature_weights, name="noise-tunnel", logger=fold_logger)
         persist_wtsne_input(None, feature_columns, feature_weights=deep_lift_feature_weights, name="deep-lift", logger=fold_logger)
         persist_wtsne_input(None, feature_columns, feature_weights=gradient_shap_feature_weights, name="gradient-shap", logger=fold_logger)
         persist_wtsne_input(None, feature_columns, feature_weights=feature_ablation_feature_weights, name="feature-ablation", logger=fold_logger)
-        '''
+        
         persist_wtsne_input(model_with_fsl, feature_columns, name="fsl", logger=fold_logger)
         persist_wtsne_input(model_with_fsl_posthoc, feature_columns, name="fsl-posthoc", logger=fold_logger)
 
         # Save feature weights 
-        '''
+        
         integrated_gradients_feature_weights_np = integrated_gradients_feature_weights.squeeze().detach().cpu().numpy()
         noise_tunnel_feature_weights_np = noise_tunnel_feature_weights.squeeze().detach().cpu().numpy()
         deep_lift_feature_weights_np = deep_lift_feature_weights.squeeze().detach().cpu().numpy()
@@ -218,7 +241,7 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         store.feature_weights_deep_lift.append(deep_lift_feature_weights_np)
         store.feature_weights_gradient_shap.append(gradient_shap_feature_weights_np)
         store.feature_weights_feature_ablation.append(feature_ablation_feature_weights_np)
-        '''
+        
         weights_with_fsl = get_feature_weights_as_numpy(model_with_fsl)
         store.feature_weights_fsl.append(weights_with_fsl)
         weights_with_fsl_posthoc = get_feature_weights_as_numpy(model_with_fsl_posthoc)
@@ -227,50 +250,50 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         # Persist feature weights
 
         fold_logger.log_text("Persisting feature weights...")
-        '''
+        
         fold_logger.log_np_array(integrated_gradients_feature_weights_np, filename=f"integrated_gradients_feature_weights.txt", fmt='%f')
         fold_logger.log_np_array(noise_tunnel_feature_weights_np, filename=f"noise_tunnel_feature_weights.txt", fmt='%f')
         fold_logger.log_np_array(deep_lift_feature_weights_np, filename=f"deep_lift_feature_weights.txt", fmt='%f')
         fold_logger.log_np_array(gradient_shap_feature_weights_np, filename=f"gradient_shap_feature_weights.txt", fmt='%f')
         fold_logger.log_np_array(feature_ablation_feature_weights_np, filename=f"feature_ablation_feature_weights.txt", fmt='%f')
-        '''
+        
         fold_logger.log_np_array(weights_with_fsl, filename=f"fsl_feature_weights.txt", fmt='%f')
         fold_logger.log_np_array(weights_with_fsl_posthoc, filename=f"fsl_posthoc_feature_weights.txt", fmt='%f')
     
         # Get normalized weights for the two models with FSL
-        '''
+        
         integrated_gradients_normalized_feature_weights = calculate_normalized_weights(integrated_gradients_feature_weights)
         noise_tunnel_normalized_feature_weights = calculate_normalized_weights(noise_tunnel_feature_weights)
         deep_lift_normalized_feature_weights = calculate_normalized_weights(deep_lift_feature_weights)
         gradient_shap_normalized_feature_weights = calculate_normalized_weights(gradient_shap_feature_weights)
         feature_ablation_normalized_feature_weights = calculate_normalized_weights(feature_ablation_feature_weights)
-        '''
+        
         fsl_normalized_feature_weights = find_normalized_weights(model_with_fsl)
         fsl_posthoc_normalized_feature_weights = find_normalized_weights(model_with_fsl_posthoc)
 
         # Persist normalized feature weights for the two models with FSL
 
         fold_logger.log_text("Persisting normalized feature weights...")
-        '''
+        
         fold_logger.log_np_array(integrated_gradients_normalized_feature_weights.squeeze().detach().cpu().numpy(), filename=f"integrated_gradients_normalized_feature_weights.txt", fmt='%f')
         fold_logger.log_np_array(noise_tunnel_normalized_feature_weights.squeeze().detach().cpu().numpy(), filename=f"noise_tunnel_normalized_feature_weights.txt", fmt='%f')
         fold_logger.log_np_array(deep_lift_normalized_feature_weights.squeeze().detach().cpu().numpy(), filename=f"deep_lift_normalized_feature_weights.txt", fmt='%f')
         fold_logger.log_np_array(gradient_shap_normalized_feature_weights.squeeze().detach().cpu().numpy(), filename=f"gradient_shap_normalized_feature_weights.txt", fmt='%f')
         fold_logger.log_np_array(feature_ablation_normalized_feature_weights.squeeze().detach().cpu().numpy(), filename=f"feature_ablation_normalized_feature_weights.txt", fmt='%f')
-        '''
+        
         fold_logger.log_np_array(fsl_normalized_feature_weights.squeeze().detach().cpu().numpy(), filename=f"fsl_normalized_feature_weights.txt", fmt='%f')
         fold_logger.log_np_array(fsl_posthoc_normalized_feature_weights.squeeze().detach().cpu().numpy(), filename=f"fsl_posthoc_normalized_feature_weights.txt", fmt='%f')
 
         # Persist feature rankings for the two models with FSL
 
         fold_logger.log_text("Persisting feature rankings...")
-        '''
+        
         fold_logger.log_np_array(get_feature_rankings(None, feature_columns, weights=integrated_gradients_feature_weights), filename=f"integrated_gradients_feature_rankings.txt", fmt='%s')
         fold_logger.log_np_array(get_feature_rankings(None, feature_columns, weights=noise_tunnel_feature_weights), filename=f"noise_tunnel_feature_rankings.txt", fmt='%s')
         fold_logger.log_np_array(get_feature_rankings(None, feature_columns, weights=deep_lift_feature_weights), filename=f"deep_lift_feature_rankings.txt", fmt='%s')
         fold_logger.log_np_array(get_feature_rankings(None, feature_columns, weights=gradient_shap_feature_weights), filename=f"gradient_shap_feature_rankings.txt", fmt='%s')
         fold_logger.log_np_array(get_feature_rankings(None, feature_columns, weights=feature_ablation_feature_weights), filename=f"feature_ablation_feature_rankings.txt", fmt='%s')
-        '''
+        
         fold_logger.log_np_array(get_feature_rankings(model_with_fsl, feature_columns), filename=f"fsl_feature_rankings.txt", fmt='%s')
         fold_logger.log_np_array(get_feature_rankings(model_with_fsl_posthoc, feature_columns), filename=f"fsl_posthoc_feature_rankings.txt", fmt='%s')
 
@@ -278,7 +301,7 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
 
         if len(informative_features) > 0:
             fold_logger.log_text("Calculating feature selection metrics...")
-            '''
+            
             pifs, psfi = Selection_Accuracy(integrated_gradients_normalized_feature_weights.squeeze().detach().cpu().clone(), informative_features, 
                                num_of_informative_features_to_display, feature_columns, print_function=fold_logger.log_text)
             store.pifs_with_integrated_gradients.append(pifs)
@@ -303,7 +326,7 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
                                num_of_informative_features_to_display, feature_columns, print_function=fold_logger.log_text)
             store.pifs_with_feature_ablation.append(pifs)
             store.psfi_with_feature_ablation.append(psfi)
-            '''
+            
             pifs, psfi = Selection_Accuracy(fsl_normalized_feature_weights.squeeze().detach().cpu().clone(), informative_features, 
                                num_of_informative_features_to_display, feature_columns, print_function=fold_logger.log_text)
             store.pifs_with_fsl.append(pifs)
@@ -319,21 +342,21 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         # Calculate prediction metrics for the three models
 
         fold_logger.log_text("Calculating prediction metrics for model without FSL.")
-        f1, acc, precision, recall = calculate_prediction_metrics(fold_logger, model_without_fsl, test_dataloader, print_function=fold_logger.log_text, name="without FSL")
+        f1, acc, precision, recall = calculate_prediction_metrics(fold_logger, model_without_fsl, test_dataloader, print_function=fold_logger.log_text, name="without FSL", is_multiclass=is_multiclass)
         store.f1_scores_without_weights.append(f1)
         store.accuracy_without_weights.append(acc)
         store.precision_without_weights.append(precision)
         store.recall_without_weights.append(recall)
 
         fold_logger.log_text("Calculating prediction metrics for model with FSL.")
-        f1, acc, precision, recall = calculate_prediction_metrics(fold_logger, model_with_fsl, test_dataloader, print_function=fold_logger.log_text, name="with FSL")
+        f1, acc, precision, recall = calculate_prediction_metrics(fold_logger, model_with_fsl, test_dataloader, print_function=fold_logger.log_text, name="with FSL", is_multiclass=is_multiclass)
         store.f1_scores_with_fsl.append(f1)
         store.accuracy_with_fsl.append(acc)
         store.precision_with_fsl.append(precision)
         store.recall_with_fsl.append(recall)
 
         fold_logger.log_text("Calculating prediction metrics for model with Post-hoc FSL.")
-        f1, acc, precision, recall = calculate_prediction_metrics(fold_logger, model_with_fsl_posthoc, test_dataloader, print_function=fold_logger.log_text, name="with Post-hoc FSL")
+        f1, acc, precision, recall = calculate_prediction_metrics(fold_logger, model_with_fsl_posthoc, test_dataloader, print_function=fold_logger.log_text, name="with Post-hoc FSL", is_multiclass=is_multiclass)
         store.f1_scores_with_fsl_posthoc.append(f1)
         store.accuracy_with_fsl_posthoc.append(acc)
         store.precision_with_fsl_posthoc.append(precision)
@@ -342,35 +365,35 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         # Calculate weighted t-SNE and silhouette
 
         fold_logger.log_text("Calculating standart t-SNE and silhouette without weights.")
-        silhouette_without_weights = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), name="without weights")
+        silhouette_without_weights = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), name="without weights", seed=seed, weight_scaler=weight_scaler)
         store.silhouette_without_weights.append(silhouette_without_weights)
-        '''
+
         fold_logger.log_text("Calculating weighted t-SNE and silhouette for Integrated Gradients.")
-        silhouette_with_integrated_gradients = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), weights=integrated_gradients_feature_weights, name="with Integrated Gradients weights")
+        silhouette_with_integrated_gradients = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), weights=integrated_gradients_feature_weights, name="with Integrated Gradients weights", seed=seed, weight_scaler=weight_scaler)
         store.silhouette_with_integrated_gradients.append(silhouette_with_integrated_gradients)
 
         fold_logger.log_text("Calculating weighted t-SNE and silhouette for Noise Tunnel.")
-        silhouette_with_noise_tunnel = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), weights=noise_tunnel_feature_weights, name="with Noise Tunnel weights")
+        silhouette_with_noise_tunnel = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), weights=noise_tunnel_feature_weights, name="with Noise Tunnel weights", seed=seed, weight_scaler=weight_scaler)
         store.silhouette_with_noise_tunnel.append(silhouette_with_noise_tunnel)
 
         fold_logger.log_text("Calculating weighted t-SNE and silhouette for Deep Lift.")
-        silhouette_with_deep_lift = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), weights=deep_lift_feature_weights, name="with Deep Lift weights")
+        silhouette_with_deep_lift = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), weights=deep_lift_feature_weights, name="with Deep Lift weights", seed=seed, weight_scaler=weight_scaler)
         store.silhouette_with_deep_lift.append(silhouette_with_deep_lift)
 
         fold_logger.log_text("Calculating weighted t-SNE and silhouette for Gradient SHAP.")
-        silhouette_with_gradient_shap = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), weights=gradient_shap_feature_weights, name="with Gradient SHAP weights")
+        silhouette_with_gradient_shap = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), weights=gradient_shap_feature_weights, name="with Gradient SHAP weights", seed=seed, weight_scaler=weight_scaler)
         store.silhouette_with_gradient_shap.append(silhouette_with_gradient_shap)
 
         fold_logger.log_text("Calculating weighted t-SNE and silhouette for Feature Ablation.")
-        silhouette_with_feature_ablation = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), weights=feature_ablation_feature_weights, name="with Feature Ablation weights")
+        silhouette_with_feature_ablation = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), weights=feature_ablation_feature_weights, name="with Feature Ablation weights", seed=seed, weight_scaler=weight_scaler)
         store.silhouette_with_feature_ablation.append(silhouette_with_feature_ablation)
-        '''
+
         fold_logger.log_text("Calculating weighted t-SNE and silhouette for model with FSL.")
-        silhouette_with_fsl = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), model=model_with_fsl, name="with FSL weights")
+        silhouette_with_fsl = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), model=model_with_fsl, name="with FSL weights", seed=seed, weight_scaler=weight_scaler)
         store.silhouette_with_fsl.append(silhouette_with_fsl)
         
         fold_logger.log_text("Calculating weighted t-SNE and silhouette for model with Post-hoc FSL.")
-        silhouette_with_fsl_posthoc = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), model=model_with_fsl_posthoc, name="with Post-hoc FSL weights")
+        silhouette_with_fsl_posthoc = WTSNEv2(fold_logger, X.to_numpy(), y.to_numpy(), model=model_with_fsl_posthoc, name="with Post-hoc FSL weights", seed=seed, weight_scaler=weight_scaler)
         store.silhouette_with_fsl_posthoc.append(silhouette_with_fsl_posthoc)
 
         # Persist models
@@ -516,8 +539,23 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         messages.append("Silhouette with FSL: " + str(store.silhouette_with_fsl) + "\n statistics: " + str(stat_silhouette_with_fsl) + "\n")
         messages.append("Silhouette with Post-hoc FSL: " + str(store.silhouette_with_fsl_posthoc) + "\n statistics: " + str(stat_silhouette_with_fsl_posthoc) + "\n")
         messages.append("Kruskal-Wallis and Dunn's test for silhouette: " + silhouette_kruskal_dunn_result + "\n")
+
+        messages.append("PIFS with Post-hoc FSL: " + str(store.pifs_with_fsl_posthoc) + "\n")
+        messages.append("PSFI with FSL: " + str(store.psfi_with_fsl) + "\n")
+        messages.append("PSFI with Post-hoc FSL: " + str(store.psfi_with_fsl_posthoc) + "\n")
+
+        messages.append("PIFS with Integrated Gradients: " + str(store.pifs_with_integrated_gradients) + "\n")
+        messages.append("PIFS with Noise Tunnel: " + str(store.pifs_with_noise_tunnel) + "\n")
+        messages.append("PIFS with Deep Lift: " + str(store.pifs_with_deep_lift) + "\n")
+        messages.append("PIFS with Gradient SHAP: " + str(store.pifs_with_gradient_shap) + "\n")
+        messages.append("PIFS with Feature Ablation: " + str(store.pifs_with_feature_ablation) + "\n")
         messages.append("PIFS with FSL: " + str(store.pifs_with_fsl) + "\n")
         messages.append("PIFS with Post-hoc FSL: " + str(store.pifs_with_fsl_posthoc) + "\n")
+        messages.append("PSFI with Integrated Gradients: " + str(store.psfi_with_integrated_gradients) + "\n")
+        messages.append("PSFI with Noise Tunnel: " + str(store.psfi_with_noise_tunnel) + "\n")
+        messages.append("PSFI with Deep Lift: " + str(store.psfi_with_deep_lift) + "\n")
+        messages.append("PSFI with Gradient SHAP: " + str(store.psfi_with_gradient_shap) + "\n")
+        messages.append("PSFI with Feature Ablation: " + str(store.psfi_with_feature_ablation) + "\n")
         messages.append("PSFI with FSL: " + str(store.psfi_with_fsl) + "\n")
         messages.append("PSFI with Post-hoc FSL: " + str(store.psfi_with_fsl_posthoc) + "\n")
         for message in messages:
@@ -527,13 +565,13 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
     # Generate feature position walk plots for the two models with FSL
 
     logger.log_text("Generating feature position walk plots...")
-    '''
+    
     generate_feature_position_walk_plot(logger, store.feature_weights_integrated_gradients, feature_columns, model_name="Integrated Gradients", informative_features=informative_features)
     generate_feature_position_walk_plot(logger, store.feature_weights_noise_tunnel, feature_columns, model_name="Noise Tunnel", informative_features=informative_features)
     generate_feature_position_walk_plot(logger, store.feature_weights_deep_lift, feature_columns, model_name="Deep Lift", informative_features=informative_features)
     generate_feature_position_walk_plot(logger, store.feature_weights_gradient_shap, feature_columns, model_name="Gradient SHAP", informative_features=informative_features)
     generate_feature_position_walk_plot(logger, store.feature_weights_feature_ablation, feature_columns, model_name="Feature Ablation", informative_features=informative_features)
-    '''
+    
     generate_feature_position_walk_plot(logger, store.feature_weights_fsl, feature_columns, model_name="FSL", informative_features=informative_features)
     generate_feature_position_walk_plot(logger, store.feature_weights_fsl_posthoc, feature_columns, model_name="Post-hoc FSL", informative_features=informative_features)
     # End of execution

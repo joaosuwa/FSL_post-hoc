@@ -114,8 +114,6 @@ def trainingModule(model, train_dataloader, validation_dataloader, n_epochs, ear
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
 
-    weightDecayValue = 0.001
-
     if (isFSLpresent):
         regularization = fs_layer_regularization
     else:
@@ -132,7 +130,7 @@ def trainingModule(model, train_dataloader, validation_dataloader, n_epochs, ear
     else:
         loss_fn = get_loss_function(train_dataloader, print_function=print_function)
 
-    optimizer = torch.optim.AdamW(params=model.parameters(), lr=lr, weight_decay=weightDecayValue)
+    optimizer = torch.optim.AdamW(params=model.parameters(), lr=lr)
 
     epochs = n_epochs
 
@@ -188,7 +186,6 @@ def get_loss_function(train_dataloader, print_function=print):
     for batch in train_dataloader:
         _, labels = batch 
         labels = labels.view(-1)
-        print(labels)
         positive_count += (labels == 1).sum().item()
         negative_count += (labels == 0).sum().item()
 
@@ -208,23 +205,12 @@ def get_loss_function(train_dataloader, print_function=print):
     return loss_fn
 
 def get_weighted_cross_entropy_loss(train_dataloader, num_classes):
-    # Step 1: Count label frequencies
     label_counts = Counter()
-    for batch in train_dataloader:
-        labels = batch[1]  # assuming (inputs, labels)
+    for _, labels in train_dataloader:
         label_counts.update(labels.tolist())
+    counts = [label_counts[i] for i in range(len(label_counts))]
+    total = sum(counts)
+    weights = [total / c if c > 0 else 0.0 for c in counts]
+    weights_tensor = torch.tensor(weights, dtype=torch.float32).to(device)
 
-    # Step 2: Compute class weights (inverse frequency)
-        total = sum(label_counts.values())
-    w0 = total / (label_counts[0] + 1e-6)
-    w1 = total / (label_counts[1] + 1e-6)
-
-    # Step 3: Normalize weights
-    weights = torch.tensor([w0, w1], dtype=torch.float).to(device)
-    weights = weights / weights.sum()  # normalize
-
-    # Step 4: Create the loss function
-    loss_fn = nn.CrossEntropyLoss(weight=weights)
-
-    return loss_fn
-
+    return nn.CrossEntropyLoss(weight=weights_tensor)

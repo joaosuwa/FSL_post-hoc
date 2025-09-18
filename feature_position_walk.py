@@ -2,31 +2,30 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def generate_feature_position_walk_plot(logger, feature_weights_results, feature_columns, model_name, informative_features=0, top_k_threshold=50000, y_limit=1000):
+def generate_feature_position_walk_plot(logger, feature_weights_results, feature_columns, model_name, informative_features=None, top_k_threshold=50, y_limit=5000):
     feature_positions = {feature: [] for feature in feature_columns}
-    top_k_counts = {feature: 0 for feature in feature_columns}
+    aggregated_feature_positions = {feature: 0 for feature in feature_columns}
     top_k_threshold = min(top_k_threshold, len(feature_columns))
-    y_limit = min(y_limit, top_k_threshold)
 
-    reorderd_feature_weights_results = reorder_executions_by_top_k_similarity(
-        feature_weights_results, 
-        feature_columns, 
-        len(informative_features) if len(informative_features) > 0 else len(feature_columns)
-    )
+    if informative_features is not None and len(informative_features) > 0:
+        feature_weights_results = reorder_executions_by_top_k_similarity(
+            feature_weights_results, 
+            feature_columns, 
+            len(informative_features) if len(informative_features) > 0 else len(feature_columns)
+        )
 
-    for feature_weights in reorderd_feature_weights_results:
+    for feature_weights in feature_weights_results:
         ranking = [feature_columns[i] for i in np.argsort(feature_weights)[::-1]]
         for rank, feature in enumerate(ranking):
             feature_positions[feature].append(rank + 1)
-            if rank + 1 <= top_k_threshold:
-                top_k_counts[feature] += 1
+            aggregated_feature_positions[feature] += rank
 
     filtered_features = sorted(
-        [feature for feature, count in top_k_counts.items() if count > 0],
-        key=lambda f: -top_k_counts[f]
-    )[:top_k_threshold]
+        [feature for feature, count in aggregated_feature_positions.items() if count > 0],
+        key=lambda f: -aggregated_feature_positions[f]
+    )#[:(2*y_limit)]
 
-    execution_indices = list(range(1, len(reorderd_feature_weights_results) + 1))
+    execution_indices = list(range(1, len(feature_weights_results) + 1))
 
     # Version WITH legend
     plt.figure(figsize=(14, 10))
