@@ -1,4 +1,4 @@
-from modelConfigs.BreastModules import BreastModel, BreastModelModelWithFSL
+from modelConfigs.breastModules import BreastModel, BreastModelModelWithFSL
 from trainingConfigs.multiple import multiple_training
 
 def breast_multiple_training():

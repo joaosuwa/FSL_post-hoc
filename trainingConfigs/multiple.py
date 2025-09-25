@@ -9,7 +9,7 @@ from sklearn.model_selection import StratifiedKFold, train_test_split
 from feature_position_walk import generate_feature_position_walk_plot
 from trainingConfigs.execution_store import ExecutionStore
 from trainingTestStep import trainingModule
-from utils import LogPrinter, calculate_kruskal_dunn_3, calculate_kruskal_dunn_5, calculate_normalized_weights, generate_execution_id, displayTopFeatures, find_normalized_weights, get_feature_rankings, get_feature_weights_as_numpy, get_weight_per_class_from_shap, persist_wtsne_input, calculate_aggregated_feature_importance
+from utils import LogPrinter, calculate_kruskal_dunn_3, calculate_kruskal_dunn_8, calculate_normalized_weights, generate_execution_id, displayTopFeatures, find_normalized_weights, get_feature_rankings, get_feature_weights_as_numpy, get_weight_per_class_from_shap, persist_wtsne_input, calculate_aggregated_feature_importance
 from data.loadDataset import folds_to_dataloaders, numpy_to_dataloaders
 from metrics import Selection_Accuracy, jaccard_similarity, pearson_correlation, silhouetteMetric, spearman_correlation
 from wtsne import WTSNEv2
@@ -458,7 +458,7 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
     accuracy_kruskal_dunn_result = calculate_kruskal_dunn_3(store.accuracy_without_weights, store.accuracy_with_fsl, store.accuracy_with_fsl_posthoc)
     precision_kruskal_dunn_result = calculate_kruskal_dunn_3(store.precision_without_weights, store.precision_with_fsl, store.precision_with_fsl_posthoc)
     recall_kruskal_dunn_result = calculate_kruskal_dunn_3(store.recall_without_weights, store.recall_with_fsl, store.recall_with_fsl_posthoc)
-    silhouette_kruskal_dunn_result = calculate_kruskal_dunn_5(store.silhouette_without_weights, store.silhouette_with_integrated_gradients, store.silhouette_with_noise_tunnel, store.silhouette_with_deep_lift, store.silhouette_with_gradient_shap, store.silhouette_with_feature_ablation, store.silhouette_with_fsl, store.silhouette_with_fsl_posthoc)
+    silhouette_kruskal_dunn_result = calculate_kruskal_dunn_8(store.silhouette_without_weights, store.silhouette_with_integrated_gradients, store.silhouette_with_noise_tunnel, store.silhouette_with_deep_lift, store.silhouette_with_gradient_shap, store.silhouette_with_feature_ablation, store.silhouette_with_fsl, store.silhouette_with_fsl_posthoc)
 
     # Calculate stability metrics
 
@@ -539,10 +539,6 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         messages.append("Silhouette with FSL: " + str(store.silhouette_with_fsl) + "\n statistics: " + str(stat_silhouette_with_fsl) + "\n")
         messages.append("Silhouette with Post-hoc FSL: " + str(store.silhouette_with_fsl_posthoc) + "\n statistics: " + str(stat_silhouette_with_fsl_posthoc) + "\n")
         messages.append("Kruskal-Wallis and Dunn's test for silhouette: " + silhouette_kruskal_dunn_result + "\n")
-
-        messages.append("PIFS with Post-hoc FSL: " + str(store.pifs_with_fsl_posthoc) + "\n")
-        messages.append("PSFI with FSL: " + str(store.psfi_with_fsl) + "\n")
-        messages.append("PSFI with Post-hoc FSL: " + str(store.psfi_with_fsl_posthoc) + "\n")
 
         messages.append("PIFS with Integrated Gradients: " + str(store.pifs_with_integrated_gradients) + "\n")
         messages.append("PIFS with Noise Tunnel: " + str(store.pifs_with_noise_tunnel) + "\n")

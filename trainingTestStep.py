@@ -18,25 +18,31 @@ def train_step(model: torch.nn.Module,
                regularization=None,
                print_function=print,
                l=0.001,
-               is_multiclass=False):
-    train_loss, train_acc = 0, 0
+               is_multiclass=False,
+               is_regression=False):
+    train_loss, train_acc, reg_loss = 0, 0, 0
     model.to(device)
     model.train()
     for _, (X, y) in enumerate(data_loader):
         # Send data to GPU
         X, y = X.to(device), y.to(device)
 
+        if hasattr(model, "set_y"):
+            model.set_y(y)
+
         # 1. Forward pass        
         y_pred_logits = model(X)
         if is_multiclass:
-            y_pred_label = torch.argmax(y_pred_logits, dim=1)  
+            y_pred = torch.argmax(y_pred_logits, dim=1)  
+        elif is_regression:
+            y_pred = y_pred_logits
         else:
             y_pred_prob = torch.sigmoid(y_pred_logits)  # Apply sigmoid for probabilities
-            y_pred_label = torch.round(y_pred_prob)  # Apply round for predicted labels
+            y_pred = torch.round(y_pred_prob)  # Apply round for predicted labels
 
         # 2. Calculate loss
         # Ensure y is the same dtype as y_pred_logits for BCEWithLogitsLoss
-        if is_multiclass:
+        if is_multiclass or is_regression:
             loss = loss_fn(y_pred_logits, y)
         else:
             loss = loss_fn(y_pred_logits, y.unsqueeze(1).float())
@@ -44,14 +50,14 @@ def train_step(model: torch.nn.Module,
         if regularization is not None:
             reg = regularization(model, l)
             loss += reg
-
+            reg_loss += reg
         train_loss += loss
 
         # Calculate accuracy based on predicted labels
         if is_multiclass:
             train_acc += accuracy_fn(y_true=y, y_pred=y_pred_logits.argmax(dim=1))
-        else:
-            train_acc += accuracy_fn(y_true=y, y_pred=y_pred_label.squeeze(1))
+        elif not is_regression:
+            train_acc += accuracy_fn(y_true=y, y_pred=y_pred.squeeze(1))
 
         # 3. Optimizer zero grad
         optimizer.zero_grad()
@@ -64,15 +70,21 @@ def train_step(model: torch.nn.Module,
 
     # Calculate loss and accuracy per epoch and print out what's happening
     train_loss /= len(data_loader)
-    train_acc /= len(data_loader)
-    print_function(f"Train loss: {train_loss:.5f} | Train accuracy: {train_acc:.2f}%")
+    reg_loss /= len(data_loader)
+    if is_regression:
+        train_acc = 0
+    else:
+        train_acc /= len(data_loader)
+    
+    print_function(f"Train loss: {train_loss:.5f} | Regularization loss: {reg_loss} | Train accuracy: {train_acc:.2f}%")
 
 def test_step(data_loader: torch.utils.data.DataLoader,
               model: torch.nn.Module,
               loss_fn: torch.nn.Module,
               accuracy_fn,
               print_function=print,
-              is_multiclass=False):
+              is_multiclass=False,
+              is_regression=False):
     test_loss, test_acc = 0, 0
     model.to(device)
     model.eval() # put model in eval mode
@@ -85,10 +97,12 @@ def test_step(data_loader: torch.utils.data.DataLoader,
             # 1. Forward pass
             test_pred_logits = model(X)
             if is_multiclass:
-                test_pred_label = torch.argmax(test_pred_logits, dim=1)  
+                test_pred = torch.argmax(test_pred_logits, dim=1)
+            elif is_regression:
+                test_pred = test_pred_logits
             else:
                 test_pred_prob = torch.sigmoid(test_pred_logits)  # Apply sigmoid for probabilities
-                test_pred_label = torch.round(test_pred_prob)  # Apply round for predicted labels
+                test_pred = torch.round(test_pred_prob)  # Apply round for predicted labels
 
             # 2. Calculate loss and accuracy
             if is_multiclass:
@@ -96,10 +110,12 @@ def test_step(data_loader: torch.utils.data.DataLoader,
                 test_acc += accuracy_fn(y_true=y,
                     y_pred=test_pred_logits.argmax(dim=1) # Use predicted labels for accuracy
                 )
+            elif is_regression:
+                test_loss = loss_fn(test_pred_logits, y)
             else:
                 test_loss += loss_fn(test_pred_logits, y.unsqueeze(1).float())
                 test_acc += accuracy_fn(y_true=y,
-                    y_pred=test_pred_label.squeeze(1) # Use predicted labels for accuracy
+                    y_pred=test_pred.squeeze(1) # Use predicted labels for accuracy
                 )
 
         # Adjust metrics and print out
@@ -109,7 +125,7 @@ def test_step(data_loader: torch.utils.data.DataLoader,
 
     return test_acc, test_loss
 
-def trainingModule(model, train_dataloader, validation_dataloader, n_epochs, earlyStop = False, isFSLpresent = False, print_function=print, seed=42, lr=0.001, l=0.001, patience=100, is_multiclass=False, num_classes=None):
+def trainingModule(model, train_dataloader, validation_dataloader, n_epochs, earlyStop = False, isFSLpresent = False, print_function=print, seed=42, lr=0.001, l=0.001, patience=100, is_multiclass=False, is_regression=False):
     if seed is not None:
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
@@ -126,7 +142,9 @@ def trainingModule(model, train_dataloader, validation_dataloader, n_epochs, ear
         all_labels.extend(labels.tolist())  # convert tensor to list and add to all_labels
 
     if is_multiclass:
-        loss_fn = get_weighted_cross_entropy_loss(train_dataloader, num_classes)
+        loss_fn = get_weighted_cross_entropy_loss(train_dataloader)
+    elif is_regression:
+        loss_fn = nn.MSELoss(reduction='mean')
     else:
         loss_fn = get_loss_function(train_dataloader, print_function=print_function)
 
@@ -149,7 +167,8 @@ def trainingModule(model, train_dataloader, validation_dataloader, n_epochs, ear
             regularization=regularization,
             print_function=print_function,
             l=l,
-            is_multiclass=is_multiclass
+            is_multiclass=is_multiclass,
+            is_regression=is_regression
         )
 
         _, test_loss = test_step(data_loader=validation_dataloader,
@@ -157,7 +176,8 @@ def trainingModule(model, train_dataloader, validation_dataloader, n_epochs, ear
             loss_fn=loss_fn,
             accuracy_fn=accuracy_fn,
             print_function=print_function,
-            is_multiclass=is_multiclass
+            is_multiclass=is_multiclass,
+            is_regression=is_regression
         )
         if (earlyStop):
             if test_loss <= best_test_loss:
@@ -200,17 +220,15 @@ def get_loss_function(train_dataloader, print_function=print):
 
     # Generate loss function
     print_function(f"Generating loss function with pos weight of: {pos_weight}...")
-    loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    return nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
-    return loss_fn
-
-def get_weighted_cross_entropy_loss(train_dataloader, num_classes):
-    label_counts = Counter()
+def get_weighted_cross_entropy_loss(train_dataloader):
+    counter = Counter()
     for _, labels in train_dataloader:
-        label_counts.update(labels.tolist())
-    counts = [label_counts[i] for i in range(len(label_counts))]
+        flat_labels = labels.view(-1).tolist()
+        counter.update(flat_labels)
+    counts = [counter[i] for i in range(len(counter))]
     total = sum(counts)
     weights = [total / c if c > 0 else 0.0 for c in counts]
     weights_tensor = torch.tensor(weights, dtype=torch.float32).to(device)
-
     return nn.CrossEntropyLoss(weight=weights_tensor)

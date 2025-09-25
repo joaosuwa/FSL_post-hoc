@@ -10,6 +10,26 @@ from scikit_posthocs import posthoc_dunn
 from sklearn.discriminant_analysis import StandardScaler
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
+def calculate_kruskal_dunn_2(without_fsl_results, with_posthoc_fsl_results, p_value_threshold=0.01):
+    result = ""
+    try:
+        _, p_value = kruskal(without_fsl_results, with_posthoc_fsl_results)
+    except ValueError as e:
+        if "All numbers are identical" in str(e):
+            p_value = 1.0  # No difference
+        else:
+            raise
+    if p_value < p_value_threshold:
+        result += "Significant difference detected (p < 0.01). "
+        data = without_fsl_results + with_posthoc_fsl_results
+        groups = ['without_weights'] * len(without_fsl_results) + ['with_posthoc_fsl'] * len(with_posthoc_fsl_results)
+        df = pd.DataFrame({'value': data, 'group': groups})
+        # Dunn’s test with Bonferroni correction
+        dunn_results = posthoc_dunn(df, val_col='value', group_col='group', p_adjust='bonferroni')
+        result += f"Dunn's post-hoc test results (p-values):\n {dunn_results}"
+    else:
+        result = "No significant difference (p ≥ 0.01)."
+    return result
 
 def calculate_kruskal_dunn_3(without_fsl_results, with_fsl_results, with_posthoc_fsl_results, p_value_threshold=0.01):
     result = ""
@@ -32,7 +52,36 @@ def calculate_kruskal_dunn_3(without_fsl_results, with_fsl_results, with_posthoc
         result = "No significant difference (p ≥ 0.01)."
     return result
 
-def calculate_kruskal_dunn_5(without_fsl_results, with_integrated_gradients_results, with_noise_tunnel_results, with_deep_lift_results, with_gradient_shap_results, with_feature_ablation_results, with_fsl_results, with_posthoc_fsl_results, p_value_threshold=0.01):
+def calculate_kruskal_dunn_7(without_fsl_results, with_integrated_gradients_results, with_noise_tunnel_results, with_deep_lift_results, with_gradient_shap_results, with_feature_ablation_results, with_posthoc_fsl_results, p_value_threshold=0.01):
+    result = ""
+    try:
+        _, p_value = kruskal(without_fsl_results, with_integrated_gradients_results, with_noise_tunnel_results, with_deep_lift_results, with_gradient_shap_results, with_feature_ablation_results, with_posthoc_fsl_results)
+    except ValueError as e:
+        if "All numbers are identical" in str(e):
+            p_value = 1.0  # No difference
+        else:
+            raise
+    if p_value < p_value_threshold:
+        result += "Significant difference detected (p < 0.01). "
+        data = without_fsl_results + with_integrated_gradients_results + with_noise_tunnel_results + with_deep_lift_results + with_gradient_shap_results + with_feature_ablation_results + with_posthoc_fsl_results
+        groups = (
+            ['without_weights'] * len(without_fsl_results)  
+            + ['with_integrated_gradients_results'] * len(with_integrated_gradients_results) 
+            + ['with_noise_tunnel_results'] * len(with_noise_tunnel_results) 
+            + ['with_deep_lift_results'] * len(with_deep_lift_results) 
+            + ['with_gradient_shap_results'] * len(with_gradient_shap_results) 
+            + ['with_feature_ablation_results'] * len(with_feature_ablation_results) 
+            + ['with_posthoc_fsl'] * len(with_posthoc_fsl_results)
+        )
+        df = pd.DataFrame({'value': data, 'group': groups})
+        # Dunn’s test with Bonferroni correction
+        dunn_results = posthoc_dunn(df, val_col='value', group_col='group', p_adjust='bonferroni')
+        result += f"Dunn's post-hoc test results (p-values):\n {dunn_results}"
+    else:
+        result = "No significant difference (p ≥ 0.01)."
+    return result
+
+def calculate_kruskal_dunn_8(without_fsl_results, with_integrated_gradients_results, with_noise_tunnel_results, with_deep_lift_results, with_gradient_shap_results, with_feature_ablation_results, with_fsl_results, with_posthoc_fsl_results, p_value_threshold=0.01):
     result = ""
     try:
         _, p_value = kruskal(without_fsl_results, with_integrated_gradients_results, with_noise_tunnel_results, with_deep_lift_results, with_gradient_shap_results, with_feature_ablation_results, with_fsl_results, with_posthoc_fsl_results)
@@ -90,7 +139,10 @@ def get_feature_rankings(model, feature_columns, weights=None):
     return [feature_columns[i] for i in ordered_indices]
 
 def get_feature_weights_as_tensor(model):
-    return model.block_1[0].get_activated_weights()
+    if hasattr(model, "block_1"):
+        return model.block_1[0].get_activated_weights()
+    else:
+        return model.fs.get_activated_weights()
 
 def get_feature_weights_as_numpy(model):
     weights = get_feature_weights_as_tensor(model)

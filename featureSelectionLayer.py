@@ -50,7 +50,10 @@ class TabNetFeatureSelectionV2(nn.Module):
 
 def fs_layer_regularization(model, l=0.001):
     # L1 regularzation
-    return l * torch.sum(torch.abs(model.block_1[0].get_weights()))
+    if hasattr(model, "block_1"):
+        return l * torch.sum(torch.abs(model.block_1[0].get_weights()))
+    else:
+        return l * torch.sum(torch.abs(model.fs.get_weights()))
 
 def transfer_weights(model_v1, model_v2):
     state_dict_v1 = model_v1.state_dict()

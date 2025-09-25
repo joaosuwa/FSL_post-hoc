@@ -6,6 +6,7 @@ def generate_feature_position_walk_plot(logger, feature_weights_results, feature
     feature_positions = {feature: [] for feature in feature_columns}
     aggregated_feature_positions = {feature: 0 for feature in feature_columns}
     top_k_threshold = min(top_k_threshold, len(feature_columns))
+    y_limit = min(y_limit, len(feature_columns))
 
     if informative_features is not None and len(informative_features) > 0:
         feature_weights_results = reorder_executions_by_top_k_similarity(
