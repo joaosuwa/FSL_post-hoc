@@ -16,7 +16,9 @@ from wtsne import WTSNEv2
 from evaluation import calculate_prediction_metrics
 from featureSelectionLayer import compare_model_weights, freezeParams, transfer_weights
 from captum.attr import IntegratedGradients, DeepLift, GradientShap, NoiseTunnel, FeatureAblation
+from featureErasure import feature_erasure
 device = "cuda" if torch.cuda.is_available() else "cpu"
+
 
 
 
@@ -286,18 +288,23 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
 
         # Persist feature rankings for the two models with FSL
 
-        fold_logger.log_text("Persisting feature rankings...")
-        
-        fold_logger.log_np_array(get_feature_rankings(None, feature_columns, weights=integrated_gradients_feature_weights), filename=f"integrated_gradients_feature_rankings.txt", fmt='%s')
-        fold_logger.log_np_array(get_feature_rankings(None, feature_columns, weights=noise_tunnel_feature_weights), filename=f"noise_tunnel_feature_rankings.txt", fmt='%s')
-        fold_logger.log_np_array(get_feature_rankings(None, feature_columns, weights=deep_lift_feature_weights), filename=f"deep_lift_feature_rankings.txt", fmt='%s')
-        fold_logger.log_np_array(get_feature_rankings(None, feature_columns, weights=gradient_shap_feature_weights), filename=f"gradient_shap_feature_rankings.txt", fmt='%s')
-        fold_logger.log_np_array(get_feature_rankings(None, feature_columns, weights=feature_ablation_feature_weights), filename=f"feature_ablation_feature_rankings.txt", fmt='%s')
+        fold_logger.log_text("Persisting feature rankings...")       
+
+        ig_rankings = get_feature_rankings(None, feature_columns, weights=integrated_gradients_feature_weights)
+        nt_rankings = get_feature_rankings(None, feature_columns, weights=noise_tunnel_feature_weights)
+        dl_rankings = get_feature_rankings(None, feature_columns, weights=deep_lift_feature_weights)
+        gs_rankings = get_feature_rankings(None, feature_columns, weights=gradient_shap_feature_weights)
+        fa_rankings = get_feature_rankings(None, feature_columns, weights=feature_ablation_feature_weights)
+        fsl_posthoc_rankings = get_feature_rankings(model_with_fsl_posthoc, feature_columns)
+
+        fold_logger.log_np_array(ig_rankings, filename=f"integrated_gradients_feature_rankings.txt", fmt='%s')
+        fold_logger.log_np_array(nt_rankings, filename=f"noise_tunnel_feature_rankings.txt", fmt='%s')
+        fold_logger.log_np_array(dl_rankings, filename=f"deep_lift_feature_rankings.txt", fmt='%s')
+        fold_logger.log_np_array(gs_rankings, filename=f"gradient_shap_feature_rankings.txt", fmt='%s')
+        fold_logger.log_np_array(fa_rankings, filename=f"feature_ablation_feature_rankings.txt", fmt='%s')
         
         fold_logger.log_np_array(get_feature_rankings(model_with_fsl, feature_columns), filename=f"fsl_feature_rankings.txt", fmt='%s')
-        fold_logger.log_np_array(get_feature_rankings(model_with_fsl_posthoc, feature_columns), filename=f"fsl_posthoc_feature_rankings.txt", fmt='%s')
-
-        # Calculate feature selection metrics
+        fold_logger.log_np_array(fsl_posthoc_rankings, filename=f"fsl_posthoc_feature_rankings.txt", fmt='%s')
 
         if len(informative_features) > 0:
             fold_logger.log_text("Calculating feature selection metrics...")
@@ -361,6 +368,38 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         store.accuracy_with_fsl_posthoc.append(acc)
         store.precision_with_fsl_posthoc.append(precision)
         store.recall_with_fsl_posthoc.append(recall)
+
+        top_n_erasure = 5
+        
+        fold_logger.log_text(f"Running Feature Erasure for all post-hoc methods on base model (model_without_fsl).")
+
+        erasure_configs = [
+            ("Integrated Gradients", ig_rankings),
+            ("Noise Tunnel", nt_rankings),
+            ("Deep Lift", dl_rankings),
+            ("Gradient SHAP", gs_rankings),
+            ("Feature Ablation", fa_rankings),
+            ("Post-hoc FSL", fsl_posthoc_rankings)
+        ]
+        
+        for method_name, rankings in erasure_configs:
+
+            f1_erased, acc_erased, prec_erased, rec_erased = feature_erasure(
+                model=model_without_fsl, 
+                ranked_features=list(rankings),
+                test_dataloader=test_dataloader, 
+                feature_names=feature_columns, 
+                top_n=top_n_erasure, 
+                batch_size=batch_size, 
+                logger=fold_logger,
+                name=method_name,
+                is_multiclass=is_multiclass
+            )
+
+            store.erasure_results[method_name]["f1"].append(f1_erased)
+            store.erasure_results[method_name]["acc"].append(acc_erased)
+            store.erasure_results[method_name]["prec"].append(prec_erased)
+            store.erasure_results[method_name]["rec"].append(rec_erased)
 
         # Calculate weighted t-SNE and silhouette
 
@@ -554,6 +593,25 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         messages.append("PSFI with Feature Ablation: " + str(store.psfi_with_feature_ablation) + "\n")
         messages.append("PSFI with FSL: " + str(store.psfi_with_fsl) + "\n")
         messages.append("PSFI with Post-hoc FSL: " + str(store.psfi_with_fsl_posthoc) + "\n")
+
+        messages.append(f"Feature Erasure results with {top_n_erasure} features" + '\n')
+
+        for method_name, metrics in store.erasure_results.items():
+            f1_list = metrics["f1"]
+            acc_list = metrics["acc"]
+            prec_list = metrics["prec"]
+            rec_list = metrics["rec"]
+            
+            stat_f1 = (pd.Series(f1_list).mean(), pd.Series(f1_list).std()) if f1_list else (0, 0)
+            stat_acc = (pd.Series(acc_list).mean(), pd.Series(acc_list).std()) if acc_list else (0, 0)
+            stat_prec = (pd.Series(prec_list).mean(), pd.Series(prec_list).std()) if prec_list else (0, 0)
+            stat_rec = (pd.Series(rec_list).mean(), pd.Series(rec_list).std()) if rec_list else (0, 0)
+            
+            messages.append(f"F1 Scores with {method_name}: {f1_list}" + "\n statistics: " + str(stat_f1))
+            messages.append(f"Accuracy with {method_name}: {acc_list}" + "\n statistics: " + str(stat_acc))
+            messages.append(f"Precision with {method_name}: {prec_list}" + "\n statistics: " + str(stat_prec))
+            messages.append(f"Recall with {method_name}: {rec_list}" + "\n statistics: " + str(stat_rec))
+
         for message in messages:
             f.write(message)
             f.write("\n")

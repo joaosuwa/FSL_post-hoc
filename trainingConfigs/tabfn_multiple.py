@@ -10,8 +10,8 @@ from torch.optim import AdamW, Optimizer
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from tabpfn import TabPFNClassifier
-from tabpfn.finetune_utils import clone_model_for_evaluation
-from tabpfn.utils import meta_dataset_collator
+#from tabpfn.finetune_utils import clone_model_for_evaluation
+#from tabpfn.utils import meta_dataset_collator
 from tqdm import trange, tqdm
 import time
 import numpy as np

@@ -3,6 +3,11 @@ class ExecutionStore:
         self.training_time_without_weights = []
         self.training_time_with_fsl = []
         self.training_time_with_fsl_posthoc = []
+        self.training_time_with_integrated_gradients = []
+        self.training_time_noise_tunnel = []
+        self.training_time_deep_lift = []
+        self.training_time_gradient_shap = []
+        self.training_time_feature_ablation = []
         self.silhouette_without_weights = []
         self.silhouette_with_integrated_gradients = []
         self.silhouette_with_noise_tunnel = []
@@ -44,6 +49,14 @@ class ExecutionStore:
         self.feature_weights_deep_lift = []
         self.feature_weights_gradient_shap = []
         self.feature_weights_feature_ablation = []
+        self.erasure_results = {
+            "Integrated Gradients": {"f1": [], "acc": [], "prec": [], "rec": []},
+            "Noise Tunnel": {"f1": [], "acc": [], "prec": [], "rec": []},
+            "Deep Lift": {"f1": [], "acc": [], "prec": [], "rec": []},
+            "Gradient SHAP": {"f1": [], "acc": [], "prec": [], "rec": []},
+            "Feature Ablation": {"f1": [], "acc": [], "prec": [], "rec": []},
+            "Post-hoc FSL": {"f1": [], "acc": [], "prec": [], "rec": []}
+        }
 
 class PretrainedExecutionStore:
     def __init__(self):
