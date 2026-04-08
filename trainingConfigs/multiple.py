@@ -166,11 +166,30 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
 
         # Apply others posthoc methods
         
+        start_time = time.perf_counter()
         ig = IntegratedGradients(model_without_fsl)
+        elapsed = time.perf_counter() - start_time
+        store.training_time_integrated_gradients.append(elapsed)
+
+        start_time = time.perf_counter()
         ig_nt = NoiseTunnel(ig)
+        elapsed = time.perf_counter() - start_time
+        store.training_time_noise_tunnel.append(elapsed)
+
+        start_time = time.perf_counter()
         dl = DeepLift(model_without_fsl)
+        elapsed = time.perf_counter() - start_time
+        store.training_time_deep_lift.append(elapsed)
+
+        start_time = time.perf_counter()
         gs = GradientShap(model_without_fsl)
+        elapsed = time.perf_counter() - start_time
+        store.training_time_gradient_shap.append(elapsed)
+
+        start_time = time.perf_counter()
         fa = FeatureAblation(model_without_fsl)
+        elapsed = time.perf_counter() - start_time
+        store.training_time_feature_ablation.append(elapsed)
 
         if is_multiclass:
             integrated_gradients_attributes = ig.attribute(X_test_tensor, n_steps=50, target=0)
@@ -458,6 +477,11 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
     stat_training_time_without_weights = (pd.Series(store.training_time_without_weights).mean(), pd.Series(store.training_time_without_weights).std())
     stat_training_time_with_fsl = (pd.Series(store.training_time_with_fsl).mean(), pd.Series(store.training_time_with_fsl).std())
     stat_training_time_with_fsl_posthoc = (pd.Series(store.training_time_with_fsl_posthoc).mean(), pd.Series(store.training_time_with_fsl_posthoc).std())
+    stat_training_time_integrated_gradients = (pd.Series(store.training_time_integrated_gradients).mean(), pd.Series(store.training_time_integrated_gradients).std())
+    stat_training_time_noise_tunnel = (pd.Series(store.training_time_noise_tunnel).mean(), pd.Series(store.training_time_noise_tunnel).std())
+    stat_training_time_deep_lift = (pd.Series(store.training_time_deep_lift).mean(), pd.Series(store.training_time_deep_lift).std())
+    stat_training_time_gradient_shap = (pd.Series(store.training_time_gradient_shap).mean(), pd.Series(store.training_time_gradient_shap).std())
+    stat_training_time_feature_ablation = (pd.Series(store.training_time_feature_ablation).mean(), pd.Series(store.training_time_feature_ablation).std())
 
     # F1 scores
     stat_f1_scores_without_weights = (pd.Series(store.f1_scores_without_weights).mean(), pd.Series(store.f1_scores_without_weights).std())
@@ -552,6 +576,11 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         messages.append("Traininig time without FSL: " + str(store.training_time_without_weights) + "\n statistics: " + str(stat_training_time_without_weights) + "\n")
         messages.append("Training time with FSL: " + str(store.training_time_with_fsl) + "\n statistics: " + str(stat_training_time_with_fsl) + "\n")
         messages.append("Training time with Post-hoc FSL: " + str(store.training_time_with_fsl_posthoc) + "\n statistics: " + str(stat_training_time_with_fsl_posthoc) + "\n")
+        messages.append("Training time with Integrated Gradients: " + str(store.training_time_integrated_gradients) + "\n statistics: " + str(stat_training_time_integrated_gradients) + "\n")
+        messages.append("Training time with Noise Tunnel: " + str(store.training_time_noise_tunnel) + "\n statistics: " + str(stat_training_time_noise_tunnel) + "\n")
+        messages.append("Training time with Deep Lift: " + str(store.training_time_deep_lift) + "\n statistics: " + str(stat_training_time_deep_lift) + "\n")
+        messages.append("Training time with Gradient SHAP: " + str(store.training_time_gradient_shap) + "\n statistics: " + str(stat_training_time_gradient_shap) + "\n")
+        messages.append("Training time with Feature Ablation: " + str(store.training_time_feature_ablation) + "\n statistics: " + str(stat_training_time_feature_ablation) + "\n")
         messages.append("Kruskal-Wallis and Dunn's test for training times: " + training_time_kruskal_dunn_result + "\n")
         messages.append("F1 Scores without FSL: " + str(store.f1_scores_without_weights) + "\n statistics: " + str(stat_f1_scores_without_weights) + "\n")
         messages.append("F1 Scores with FSL: " + str(store.f1_scores_with_fsl) + "\n statistics: " + str(stat_f1_scores_with_fsl) + "\n")
@@ -607,10 +636,10 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
             stat_prec = (pd.Series(prec_list).mean(), pd.Series(prec_list).std()) if prec_list else (0, 0)
             stat_rec = (pd.Series(rec_list).mean(), pd.Series(rec_list).std()) if rec_list else (0, 0)
             
-            messages.append(f"F1 Scores with {method_name}: {f1_list}" + "\n statistics: " + str(stat_f1))
-            messages.append(f"Accuracy with {method_name}: {acc_list}" + "\n statistics: " + str(stat_acc))
-            messages.append(f"Precision with {method_name}: {prec_list}" + "\n statistics: " + str(stat_prec))
-            messages.append(f"Recall with {method_name}: {rec_list}" + "\n statistics: " + str(stat_rec))
+            messages.append(f"F1 Scores with {method_name}: {f1_list}" + "\n statistics: " + str(stat_f1) + "\n")
+            messages.append(f"Accuracy with {method_name}: {acc_list}" + "\n statistics: " + str(stat_acc) + "\n")
+            messages.append(f"Precision with {method_name}: {prec_list}" + "\n statistics: " + str(stat_prec) + "\n")
+            messages.append(f"Recall with {method_name}: {rec_list}" + "\n statistics: " + str(stat_rec) + "\n")
 
         for message in messages:
             f.write(message)

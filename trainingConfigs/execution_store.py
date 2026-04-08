@@ -3,7 +3,7 @@ class ExecutionStore:
         self.training_time_without_weights = []
         self.training_time_with_fsl = []
         self.training_time_with_fsl_posthoc = []
-        self.training_time_with_integrated_gradients = []
+        self.training_time_integrated_gradients = []
         self.training_time_noise_tunnel = []
         self.training_time_deep_lift = []
         self.training_time_gradient_shap = []
