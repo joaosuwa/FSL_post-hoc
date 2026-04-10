@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 class ExecutionStore:
     def __init__(self):
         self.training_time_without_weights = []
@@ -50,13 +52,21 @@ class ExecutionStore:
         self.feature_weights_gradient_shap = []
         self.feature_weights_feature_ablation = []
         self.erasure_results = {
-            "Integrated Gradients": {"f1": [], "acc": [], "prec": [], "rec": []},
-            "Noise Tunnel": {"f1": [], "acc": [], "prec": [], "rec": []},
-            "Deep Lift": {"f1": [], "acc": [], "prec": [], "rec": []},
-            "Gradient SHAP": {"f1": [], "acc": [], "prec": [], "rec": []},
-            "Feature Ablation": {"f1": [], "acc": [], "prec": [], "rec": []},
-            "Post-hoc FSL": {"f1": [], "acc": [], "prec": [], "rec": []}
-        }
+            method: {
+                "f1": defaultdict(list),
+                "acc": defaultdict(list),
+                "prec": defaultdict(list),
+                "rec": defaultdict(list)
+            }
+            for method in [
+                "Integrated Gradients",
+                "Noise Tunnel",
+                "Deep Lift",
+                "Gradient SHAP",
+                "Feature Ablation",
+                "Post-hoc FSL"
+            ]
+}
 
 class PretrainedExecutionStore:
     def __init__(self):

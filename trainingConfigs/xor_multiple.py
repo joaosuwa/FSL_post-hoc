@@ -19,5 +19,6 @@ def xor_multiple_training():
         should_persist=True,
         num_of_informative_features_to_display=10,
         jaccard_k_list=list(range(1, 51)),
-        l=0.0025
+        l=0.0025,
+        feature_erasure_list=[1,2,5,10,20,50]
     )

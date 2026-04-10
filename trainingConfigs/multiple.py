@@ -24,7 +24,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 def multiple_training(name, base_model, model_with_fsl, dataset_path, label_column, has_numeric_labels=True, ignored_columns=[], num_of_tests=3, test_percentage=0.1, seed=None, batch_size=32, n_epochs_base=50, n_epochs_fsl=50, 
                       n_epochs_fsl_posthoc=50, learning_rate=0.01, should_persist=True, num_of_informative_features_to_display=10, jaccard_k_list=None, l=0.001, scaler=StandardScaler, weight_scaler=StandardScaler,general_weights_from_absolute_values=True, 
-                      is_multiclass=False, num_classes=2):
+                      is_multiclass=False, num_classes=2, feature_erasure_list = []):
     general_start_time = time.perf_counter()
 
     # Models
@@ -388,7 +388,7 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         store.precision_with_fsl_posthoc.append(precision)
         store.recall_with_fsl_posthoc.append(recall)
 
-        top_n_erasure = 5
+        #top_n_erasure = 2
         
         fold_logger.log_text(f"Running Feature Erasure for all post-hoc methods on base model (model_without_fsl).")
 
@@ -403,22 +403,24 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         
         for method_name, rankings in erasure_configs:
 
-            f1_erased, acc_erased, prec_erased, rec_erased = feature_erasure(
-                model=model_without_fsl, 
-                ranked_features=list(rankings),
-                test_dataloader=test_dataloader, 
-                feature_names=feature_columns, 
-                top_n=top_n_erasure, 
-                batch_size=batch_size, 
-                logger=fold_logger,
-                name=method_name,
-                is_multiclass=is_multiclass
-            )
+            for numberOfErased in feature_erasure_list:
 
-            store.erasure_results[method_name]["f1"].append(f1_erased)
-            store.erasure_results[method_name]["acc"].append(acc_erased)
-            store.erasure_results[method_name]["prec"].append(prec_erased)
-            store.erasure_results[method_name]["rec"].append(rec_erased)
+                f1_erased, acc_erased, prec_erased, rec_erased = feature_erasure(
+                    model=model_without_fsl, 
+                    ranked_features=list(rankings),
+                    test_dataloader=test_dataloader, 
+                    feature_names=feature_columns, 
+                    top_n=numberOfErased, 
+                    batch_size=batch_size, 
+                    logger=fold_logger,
+                    name=method_name,
+                    is_multiclass=is_multiclass
+                )
+
+                store.erasure_results[method_name]["f1"][numberOfErased].append(f1_erased)
+                store.erasure_results[method_name]["acc"][numberOfErased].append(acc_erased)
+                store.erasure_results[method_name]["prec"][numberOfErased].append(prec_erased)
+                store.erasure_results[method_name]["rec"][numberOfErased].append(rec_erased)
 
         # Calculate weighted t-SNE and silhouette
 
@@ -623,23 +625,25 @@ def multiple_training(name, base_model, model_with_fsl, dataset_path, label_colu
         messages.append("PSFI with FSL: " + str(store.psfi_with_fsl) + "\n")
         messages.append("PSFI with Post-hoc FSL: " + str(store.psfi_with_fsl_posthoc) + "\n")
 
-        messages.append(f"Feature Erasure results with {top_n_erasure} features" + '\n')
+        for numberOfErased in feature_erasure_list:
 
-        for method_name, metrics in store.erasure_results.items():
-            f1_list = metrics["f1"]
-            acc_list = metrics["acc"]
-            prec_list = metrics["prec"]
-            rec_list = metrics["rec"]
-            
-            stat_f1 = (pd.Series(f1_list).mean(), pd.Series(f1_list).std()) if f1_list else (0, 0)
-            stat_acc = (pd.Series(acc_list).mean(), pd.Series(acc_list).std()) if acc_list else (0, 0)
-            stat_prec = (pd.Series(prec_list).mean(), pd.Series(prec_list).std()) if prec_list else (0, 0)
-            stat_rec = (pd.Series(rec_list).mean(), pd.Series(rec_list).std()) if rec_list else (0, 0)
-            
-            messages.append(f"F1 Scores with {method_name}: {f1_list}" + "\n statistics: " + str(stat_f1) + "\n")
-            messages.append(f"Accuracy with {method_name}: {acc_list}" + "\n statistics: " + str(stat_acc) + "\n")
-            messages.append(f"Precision with {method_name}: {prec_list}" + "\n statistics: " + str(stat_prec) + "\n")
-            messages.append(f"Recall with {method_name}: {rec_list}" + "\n statistics: " + str(stat_rec) + "\n")
+            messages.append(f"Feature Erasure results with {numberOfErased} erased features" + '\n')
+
+            for method_name, metrics in store.erasure_results.items():
+                f1_list = metrics["f1"][numberOfErased]
+                acc_list = metrics["acc"][numberOfErased]
+                prec_list = metrics["prec"][numberOfErased]
+                rec_list = metrics["rec"][numberOfErased]
+                
+                stat_f1 = (pd.Series(f1_list).mean(), pd.Series(f1_list).std()) if f1_list else (0, 0)
+                stat_acc = (pd.Series(acc_list).mean(), pd.Series(acc_list).std()) if acc_list else (0, 0)
+                stat_prec = (pd.Series(prec_list).mean(), pd.Series(prec_list).std()) if prec_list else (0, 0)
+                stat_rec = (pd.Series(rec_list).mean(), pd.Series(rec_list).std()) if rec_list else (0, 0)
+                
+                messages.append(f"F1 Scores with {method_name}: {f1_list}" + "\n statistics: " + str(stat_f1) + "\n")
+                messages.append(f"Accuracy with {method_name}: {acc_list}" + "\n statistics: " + str(stat_acc) + "\n")
+                messages.append(f"Precision with {method_name}: {prec_list}" + "\n statistics: " + str(stat_prec) + "\n")
+                messages.append(f"Recall with {method_name}: {rec_list}" + "\n statistics: " + str(stat_rec) + "\n")
 
         for message in messages:
             f.write(message)
